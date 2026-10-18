@@ -1,4 +1,4 @@
-# 🏐 排球賽後 AI 戰情與運動生物力學分析系統
+# 🏐 排球比賽 AI 戰情與運動生物力學分析系統
 ### Volleyball AI Analytics & Biomechanics Dashboard
 
 > **國立臺中科技大學 資訊工程系（TAICA_生成式AI：文字與圖像生成的原理與實務 課程作業）**  
