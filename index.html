@@ -1,0 +1,3945 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>排球賽後 AI 戰情分析系統 | Volleyball AI Analytics & Biomechanics Dashboard</title>
+  
+  <!-- Google Fonts: 現代親民、圓潤運動風格字型 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg-page: #f1f5f9;
+      --bg-panel: #ffffff;
+      --bg-card: #f8fafc;
+      
+      --brand-blue: #0284c7;
+      --brand-blue-light: #e0f2fe;
+      --brand-orange: #f97316;
+      --brand-orange-light: #ffedd5;
+      --brand-emerald: #10b981;
+      --brand-emerald-light: #d1fae5;
+      
+      --team-blue: #0284c7;
+      --team-red: #ef4444;
+      
+      --border-color: #e2e8f0;
+      
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-light: #94a3b8;
+      
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06);
+      --shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.08);
+      
+      --font-display: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+      --font-body: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      overflow-x: hidden;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      background-image: 
+        radial-gradient(circle at 12% 18%, rgba(2, 132, 199, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 88% 82%, rgba(249, 115, 22, 0.04) 0%, transparent 40%),
+        linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 28px 28px, 28px 28px;
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+    }
+
+    .brand-text h1 {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      color: #0f172a;
+    }
+
+    .brand-text h1 span {
+      background: linear-gradient(135deg, #0284c7, #f97316);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-text p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .header-match-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .match-info-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .match-pill-tag {
+      color: #ea580c;
+      background: #ffedd5;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+
+    .header-scoreboard {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-family: var(--font-display);
+    }
+
+    .match-team {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .match-team.blue { color: var(--team-blue); }
+    .match-team.red { color: var(--team-red); }
+
+    .match-score {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 800;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      padding: 2px 10px;
+      border-radius: 8px;
+      color: #0f172a;
+      letter-spacing: 1px;
+      min-width: 60px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-reroll-match {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 7px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-reroll-match:hover {
+      background: #f8fafc;
+      border-color: var(--brand-blue);
+      color: var(--brand-blue);
+      transform: translateY(-1px);
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--brand-emerald-light);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #065f46;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--brand-emerald);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1.18fr 0.82fr;
+      gap: 24px;
+      padding: 24px 28px;
+      max-width: 1920px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1240px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .friendly-panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .panel-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #0f172a;
+    }
+
+    .panel-title span {
+      background: var(--brand-blue-light);
+      color: var(--brand-blue);
+      font-size: 0.82rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .monitor-controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .camera-switcher {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #f8fafc;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .cam-label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding: 0 6px;
+    }
+
+    .cam-btn {
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .cam-btn:hover { color: #0f172a; background: #ffffff; }
+    .cam-btn.active {
+      color: #ffffff;
+      background: var(--brand-blue);
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+    }
+
+    .source-selector {
+      display: flex;
+      gap: 6px;
+      background: #f8fafc;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .source-tab {
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .source-tab.active {
+      background: #ffffff;
+      color: var(--brand-blue);
+      font-weight: 700;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .source-content-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .url-input-group { display: flex; gap: 8px; }
+
+    .tech-input {
+      flex: 1;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: #0f172a;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .tech-input:focus {
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    .tech-btn-secondary {
+      background: var(--brand-blue);
+      color: #ffffff;
+      border: none;
+      padding: 0 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .tech-btn-secondary:hover { background: #0369a1; }
+
+    .drop-zone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      background: #f8fafc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+
+    .drop-zone:hover {
+      border-color: var(--brand-blue);
+      background: var(--brand-blue-light);
+      color: var(--brand-blue);
+    }
+
+    .drop-zone.dragover {
+      border-color: #0284c7;
+      background: #e0f2fe;
+      color: #0284c7;
+      transform: scale(1.01);
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.25);
+    }
+
+    /* 視覺視窗 */
+    .visual-viewport {
+      position: relative;
+      width: 100%;
+      height: 500px;
+      background: #0b1329;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-md);
+      cursor: grab;
+      user-select: none;
+    }
+
+    .visual-viewport:active {
+      cursor: grabbing;
+    }
+
+    #matchVideo, #youtubeIframe, #defaultSimCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #youtubeIframe { border: none; pointer-events: none; }
+
+    #aiHudCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .laser-scanline {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #38bdf8, #ffffff, #0284c7, transparent);
+      box-shadow: 0 0 14px #38bdf8;
+      opacity: 0;
+      z-index: 15;
+      pointer-events: none;
+    }
+
+    .laser-scanline.scanning {
+      opacity: 1;
+      animation: scanLaser 2.2s ease-in-out infinite alternate;
+    }
+
+    @keyframes scanLaser {
+      0% { top: 0%; opacity: 0.8; }
+      100% { top: 96%; opacity: 1; }
+    }
+
+    .yolo-overlay-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 12;
+      pointer-events: none;
+    }
+
+    .bounding-box {
+      position: absolute;
+      top: 0;
+      left: 0;
+      border: 2px solid #38bdf8;
+      background: rgba(2, 132, 199, 0.12);
+      border-radius: 8px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      will-change: transform, width, height;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+    }
+
+    .bounding-box.active { opacity: 1; }
+    .bounding-box.enemy-box {
+      border-color: #f87171;
+      background: rgba(239, 68, 68, 0.12);
+      box-shadow: 0 0 10px rgba(248, 113, 113, 0.35);
+    }
+
+    .box-label {
+      position: absolute;
+      top: -24px;
+      left: -2px;
+      background: #0284c7;
+      color: #ffffff;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .box-label.enemy { background: #ef4444; }
+
+    .hud-stats-overlay {
+      position: absolute;
+      top: 14px;
+      left: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #ffffff;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+      padding: 6px 12px;
+      border-radius: 8px;
+      z-index: 14;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .hud-angle-badge {
+      position: absolute;
+      top: 14px;
+      right: 20px;
+      font-family: var(--font-display);
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #0f172a;
+      background: #ffffff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+      z-index: 14;
+      pointer-events: none;
+    }
+
+    .hud-rally-ticker {
+      position: absolute;
+      bottom: 14px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 8px 16px;
+      z-index: 14;
+      box-shadow: var(--shadow-lg);
+      pointer-events: none;
+    }
+
+    .ticker-desc {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ticker-timer {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: #38bdf8;
+      background: rgba(2, 132, 199, 0.2);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+
+    .terminal-container {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px 14px;
+      height: 90px;
+      overflow-y: auto;
+      font-size: 0.76rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .terminal-container::-webkit-scrollbar { width: 4px; }
+    .terminal-container::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .terminal-line {
+      display: flex;
+      gap: 8px;
+      line-height: 1.4;
+      color: var(--text-muted);
+    }
+
+    .log-time { color: var(--text-light); font-family: var(--font-mono); }
+    .log-tag { color: var(--brand-blue); font-weight: 700; }
+    .log-tag.warn { color: var(--brand-orange); }
+    .log-tag.success { color: var(--brand-emerald); }
+    .log-text { color: var(--text-main); font-weight: 500; }
+
+    .control-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-launch-ai {
+      flex: 1;
+      min-width: 220px;
+      background: linear-gradient(135deg, #0284c7, #0284c7);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 13px 22px;
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+      transition: all 0.25s ease;
+    }
+
+    .btn-launch-ai:hover:not(:disabled) {
+      background: linear-gradient(135deg, #0369a1, #0284c7);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
+    }
+
+    .btn-launch-ai:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .layer-controls { display: flex; gap: 8px; }
+
+    .layer-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      background: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      transition: all 0.2s;
+    }
+
+    .layer-toggle:hover {
+      background: #ffffff;
+      color: var(--text-main);
+      border-color: var(--brand-blue);
+    }
+
+    .layer-toggle input { accent-color: var(--brand-blue); }
+
+    .sound-toggle-btn {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .sound-toggle-btn.active {
+      color: #065f46;
+      border-color: rgba(16, 185, 129, 0.4);
+      background: var(--brand-emerald-light);
+    }
+
+    .dashboard-panel { transition: opacity 0.4s ease; }
+
+    .athlete-hero-card {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .athlete-avatar-box { display: flex; align-items: center; gap: 14px; }
+
+    .athlete-jersey-badge {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+    }
+
+    .athlete-jersey-badge.red-team {
+      background: linear-gradient(135deg, #ef4444, #f87171);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+    }
+
+    .athlete-info-text h3 {
+      font-family: var(--font-display);
+      font-size: 1.22rem;
+      font-weight: 800;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .athlete-info-text p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    .player-dropdown {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      color: #0f172a;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 0.84rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stats-split-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 800px) {
+      .stats-split-grid { grid-template-columns: 1fr; }
+    }
+
+    .stats-card-container {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .stats-section-title {
+      font-family: var(--font-display);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stats-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-color);
+    }
+
+    .radar-wrapper { position: relative; width: 100%; height: 185px; }
+
+    .reach-scale-box { display: flex; flex-direction: column; gap: 8px; }
+
+    .reach-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .reach-bar-track {
+      width: 100%;
+      height: 14px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .reach-bar-fill {
+      height: 100%;
+      width: 80%;
+      background: linear-gradient(90deg, #0284c7, #38bdf8);
+      border-radius: 999px;
+      transition: width 0.6s ease;
+    }
+
+    .reach-net-indicator {
+      position: absolute;
+      top: 0;
+      left: 55%;
+      height: 100%;
+      width: 2px;
+      background: #ef4444;
+    }
+
+    .shot-dist-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .shot-dist-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 6px 8px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .shot-dist-name { font-size: 0.68rem; color: var(--text-muted); font-weight: 600; }
+    .shot-dist-val {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--brand-blue);
+    }
+
+    .biomech-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    @media (max-width: 600px) { .biomech-grid { grid-template-columns: 1fr; } }
+
+    .metric-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: #cbd5e1;
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 12px;
+      right: 12px;
+      height: 3px;
+      border-radius: 0 0 4px 4px;
+      background: var(--brand-blue);
+    }
+    .metric-card.accent-green::before { background: var(--brand-emerald); }
+    .metric-card.accent-orange::before { background: var(--brand-orange); }
+
+    .metric-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
+
+    .metric-value-box { display: flex; align-items: baseline; gap: 4px; margin: 2px 0; }
+    .metric-value {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .metric-card.accent-blue .metric-value { color: var(--brand-blue); }
+    .metric-card.accent-green .metric-value { color: var(--brand-emerald); }
+    .metric-card.accent-orange .metric-value { color: var(--brand-orange); }
+
+    .metric-unit { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+    .metric-sub { font-size: 0.68rem; color: var(--text-light); font-weight: 500; }
+
+    .diagnosis-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+
+    .diagnosis-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .diagnosis-title {
+      font-family: var(--font-display);
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #1e40af;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .diagnosis-tag {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-radius: 6px;
+    }
+
+    .diagnosis-text { font-size: 0.84rem; line-height: 1.55; color: #1e3a8a; font-weight: 500; }
+
+    /* 完整技術統計表與賽事實錄樣式 */
+    .skills-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 768px) {
+      .skills-detail-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .skill-stat-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .skill-stat-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .skill-stat-val {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .skill-stat-sub {
+      font-size: 0.65rem;
+      color: var(--text-light);
+      font-weight: 500;
+    }
+
+    /* 全場技術統計總表 */
+    .boxscore-panel {
+      margin-top: 18px;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 18px 22px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .team-summary-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px 18px;
+      margin: 10px 0 14px 0;
+      gap: 12px;
+    }
+
+    .team-sum-side {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .team-sum-score {
+      font-family: var(--font-display);
+      font-size: 1.65rem;
+      font-weight: 800;
+    }
+
+    .team-sum-blue { color: var(--team-blue); }
+    .team-sum-red { color: var(--team-red); }
+
+    .team-sum-center {
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .boxscore-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+    }
+
+    .boxscore-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .boxscore-table th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 700;
+      padding: 9px 12px;
+      border-bottom: 2px solid var(--border-color);
+      font-family: var(--font-display);
+    }
+
+    .boxscore-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+      font-weight: 500;
+    }
+
+    .boxscore-table tr:hover {
+      background: #f8fafc;
+      cursor: pointer;
+    }
+
+    .boxscore-table tr.active-row {
+      background: #e0f2fe !important;
+      font-weight: 700;
+    }
+
+    .boxscore-table tr.team-red-row.active-row {
+      background: #fee2e2 !important;
+    }
+
+    .playbyplay-container {
+      margin-top: 10px;
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: #f8fafc;
+    }
+
+    .playbyplay-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      transition: all 0.2s ease;
+    }
+
+    .playbyplay-item.active {
+      border-color: #38bdf8;
+      background: #f0f9ff;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.2);
+    }
+
+    .playbyplay-item.blue-pt { border-left: 4px solid var(--team-blue); }
+    .playbyplay-item.red-pt { border-left: 4px solid var(--team-red); }
+
+    .playbyplay-score {
+      font-family: var(--font-mono);
+      font-weight: 800;
+      color: #0f172a;
+      min-width: 55px;
+    }
+
+    .playbyplay-desc {
+      flex: 1;
+      margin: 0 10px;
+      font-weight: 500;
+      color: #334155;
+    }
+
+    .playbyplay-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .playbyplay-badge.spike { background: #fef3c7; color: #b45309; }
+    .playbyplay-badge.block { background: #d1fae5; color: #065f46; }
+    .playbyplay-badge.ace { background: #e0e7ff; color: #3730a3; }
+    .playbyplay-badge.error { background: #fee2e2; color: #991b1b; }
+
+    footer {
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      padding: 12px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 頂部導航 -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🏐</div>
+      <div class="brand-text">
+        <h1>Volleyball <span>AI Analytics</span></h1>
+        <p>真實球場排球賽後動態與運動學分析系統</p>
+      </div>
+    </div>
+
+    <!-- 比賽看板與隨機抽樣按鈕 -->
+    <div class="header-match-wrap">
+      <div class="match-info-pill">
+        <span class="match-pill-tag" id="matchBadgeTag">🏆 金牌決賽</span>
+        <span id="matchTitleText" style="color: #0f172a; font-weight: 700;">2026 全國大專排球聯賽 男子公開一級 冠軍決賽 (藍隊 vs 紅隊)</span>
+      </div>
+
+      <div class="header-scoreboard">
+        <div class="match-team blue">🔵 國立體大 (藍隊)</div>
+        <div class="match-score" id="scoreboardText">0 : 0</div>
+        <div class="match-team red">中原大學 (紅隊) 🔴</div>
+      </div>
+
+      <button id="btnRestartMatch" class="btn-reroll-match" title="從 0:0 重新開賽">
+        <span>🔄 從 0:0 重新開局</span>
+      </button>
+    </div>
+
+    <div class="header-status">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span id="systemStatusText">比賽進行中 (LIVE)</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主佈局雙欄 -->
+  <main>
+    <!-- 左側：視覺監控區 -->
+    <section class="friendly-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span>01</span> 12人真實球場攻防監控 // REAL ARENA COURT
+        </h2>
+        <button id="soundToggle" class="sound-toggle-btn active" title="開關比賽實況音效 (接扣球、起跳破風、排球鞋磨木地板)">
+          <span>🔊 比賽音效: 開啟</span>
+        </button>
+      </div>
+
+      <!-- 視角切換 & 來源控制列 -->
+      <div class="monitor-controls-bar">
+        <div class="camera-switcher">
+          <span class="cam-label">🎥 拍攝視角:</span>
+          <button class="cam-btn active" data-view="isometric" id="camIso">🏟️ 轉播斜角</button>
+          <button class="cam-btn" data-view="baseline" id="camBaseline">🏐 底線視角</button>
+          <button class="cam-btn" data-view="tactical" id="camTactical">📋 戰術俯視</button>
+          <button class="cam-btn" data-view="net" id="camNet">🧱 網前攻防</button>
+        </div>
+
+        <div class="source-selector">
+          <button class="source-tab active" data-source="demo" id="tabDemo">實戰模擬</button>
+          <button class="source-tab" data-source="file" id="tabFile">本地影片</button>
+          <button class="source-tab" data-source="youtube" id="tabYoutube">YouTube</button>
+        </div>
+      </div>
+
+      <!-- 外部輸入區塊 -->
+      <div class="source-content-box">
+        <div id="fileUploadContainer" class="drop-zone" style="display: none;">
+          <input type="file" id="videoFileInput" accept="video/mp4,video/webm" style="display: none;">
+          <span style="font-size: 1.2rem;">📥</span>
+          <p>拖曳比賽影片至此，或點擊瀏覽本地 MP4 / WebM 檔案</p>
+        </div>
+
+        <div id="youtubeInputContainer" class="url-input-group" style="display: none;">
+          <input type="text" id="youtubeUrlInput" class="tech-input" placeholder="貼上 YouTube 影片網址 (例: https://www.youtube.com/watch?v=...)">
+          <button id="btnLoadYoutube" class="tech-btn-secondary">載入</button>
+          <button id="btnYoutubeSample" class="tech-btn-secondary" style="background: #f97316;">帶入示範</button>
+        </div>
+      </div>
+
+      <!-- 視覺監控視窗 (真實木紋楓木地板 + FIVB 競賽球場) -->
+      <div class="visual-viewport" id="viewportContainer">
+        <!-- 排球與12人引擎 Canvas -->
+        <canvas id="defaultSimCanvas"></canvas>
+
+        <video id="matchVideo" muted loop playsinline style="display: none;"></video>
+        <iframe id="youtubeIframe" src="" allow="autoplay; encrypted-media" style="display: none;"></iframe>
+
+        <!-- AI HUD 覆蓋畫布 (姿態骨架與小人 100% 精準對齊) -->
+        <canvas id="aiHudCanvas"></canvas>
+
+        <!-- 雷射掃描線 -->
+        <div id="laserScanline" class="laser-scanline"></div>
+
+        <!-- YOLO 標記框容器 -->
+        <div id="yoloOverlay" class="yolo-overlay-container"></div>
+
+        <div class="hud-stats-overlay">
+          <div>ARENA: RealCourt-Physics 3D</div>
+          <div>FPS: <span id="hudFpsText">60.0 FPS</span></div>
+          <div>OBJECTS: <span id="hudObjCount">12 PLAYERS + 1 BALL</span></div>
+        </div>
+
+        <div class="hud-angle-badge" id="hudAngleBadge">
+          <span>🎥 視角: 轉播斜角 (45°)</span>
+        </div>
+
+        <div class="hud-rally-ticker">
+          <div class="ticker-desc" id="hudTickerText">
+            <span>🏐 [第 1/5 回合] 雙方全員防守站位已就緒，比賽進行中</span>
+          </div>
+          <div class="ticker-timer" id="hudMatchClock">MATCH TIME: 00:00 / 05:00</div>
+        </div>
+      </div>
+
+      <div class="terminal-container" id="terminalBox">
+        <div class="terminal-line">
+          <span class="log-time">[00:00:01]</span>
+          <span class="log-tag">[系統就緒]</span>
+          <span class="log-text">排球場地與 12 名球員骨架連線已完成動態校準。</span>
+        </div>
+      </div>
+
+      <div class="control-toolbar">
+        <button id="btnLaunchAI" class="btn-launch-ai">
+          <span id="btnIcon">🚀</span>
+          <span id="btnText">啟動當前比賽 AI 深度運算</span>
+        </button>
+
+        <div class="layer-controls">
+          <label class="layer-toggle">
+            <input type="checkbox" id="layerYolo" checked>
+            <span>YOLO 追蹤框</span>
+          </label>
+          <label class="layer-toggle">
+            <input type="checkbox" id="layerPose" checked>
+            <span>骨架姿態 (Pose)</span>
+          </label>
+          <label class="layer-toggle">
+            <input type="checkbox" id="layerTrack" checked>
+            <span>球體拋物線</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右側：戰情儀表板 -->
+    <section class="friendly-panel dashboard-panel" id="dashboardPanel">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span>02</span> 本場比賽戰力數據 // MATCH ANALYTICS
+        </h2>
+        <div id="computationBadge" class="status-badge" style="background: #e0f2fe; border-color: #bae6fd; color: #0369a1;">
+          待運算
+        </div>
+      </div>
+
+      <div class="athlete-hero-card">
+        <div class="athlete-avatar-box">
+          <div class="athlete-jersey-badge" id="playerJerseyBadge">#1</div>
+          <div class="athlete-info-text">
+            <h3 id="playerNameText">林晨皓 <span style="font-size: 0.8rem; font-weight: 600; color: var(--brand-blue);" id="playerPosText">主攻手 (OH)</span></h3>
+            <p id="playerSubInfo">本場 MVP • 身高: 191cm • 體重: 84kg • 藍隊主力</p>
+          </div>
+        </div>
+
+        <div class="player-dropdown-box" style="min-width: 190px;">
+          <select id="playerDropdown" class="player-dropdown">
+            <optgroup label="── 藍隊 (主隊) ──">
+              <option value="1" selected>#01 主攻手 (OH) 林晨皓</option>
+              <option value="2">#02 接應副攻 (OP) 陳冠廷</option>
+              <option value="3">#03 舉球員 (S) 許家豪</option>
+              <option value="4">#04 快攻手 (MB) 吳俊諺</option>
+              <option value="5">#05 自由球員 (L) 蘇育民</option>
+              <option value="6">#06 主攻手 (OH) 黃昱翔</option>
+            </optgroup>
+            <optgroup label="── 紅隊 (客隊) ──">
+              <option value="7">#07 主攻手 (OH) 高橋 健</option>
+              <option value="8">#08 接應副攻 (OP) 李承祐</option>
+              <option value="9">#09 舉球員 (S) 張宏偉</option>
+              <option value="10">#10 快攻手 (MB) 鄭志強</option>
+              <option value="11">#11 自由球員 (L) 劉子玄</option>
+              <option value="12">#12 快攻手 (MB) 趙子豪</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <div class="stats-split-grid">
+        <div class="stats-card-container">
+          <div class="stats-section-title">五維專項能力指標 // RADAR</div>
+          <div class="radar-wrapper">
+            <canvas id="playerRadarChart"></canvas>
+          </div>
+        </div>
+
+        <div class="stats-card-container">
+          <div class="stats-section-title">擊球打點與超手高度 // REACH VS NET</div>
+          <div class="reach-scale-box">
+            <div class="reach-visual-bar-wrap">
+              <div class="reach-labels">
+                <span>男排網高 2.43m</span>
+                <span id="reachScaleText" style="color: var(--brand-blue); font-weight: 700;">打點: 3.32m (+89cm)</span>
+              </div>
+              <div class="reach-bar-track">
+                <div class="reach-net-indicator"></div>
+                <div class="reach-bar-fill" id="reachBarFill" style="width: 82%;"></div>
+              </div>
+            </div>
+
+            <div class="stats-section-title" style="margin-top: 4px;">本場扣球落點分佈 // SHOT SPRAY</div>
+            <div class="shot-dist-grid">
+              <div class="shot-dist-card">
+                <div class="shot-dist-name">直線 (Line)</div>
+                <div class="shot-dist-val" id="shotLineVal">35%</div>
+              </div>
+              <div class="shot-dist-card">
+                <div class="shot-dist-name">大斜線 (Cross)</div>
+                <div class="shot-dist-val" id="shotCrossVal">48%</div>
+              </div>
+              <div class="shot-dist-card">
+                <div class="shot-dist-name">吊球 (Tip)</div>
+                <div class="shot-dist-val" id="shotTipVal">17%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-section-title">本場實測運動科學數據 // BIOMECHANICS TELEMETRY</div>
+      <div class="biomech-grid">
+        <div class="metric-card accent-blue">
+          <div class="metric-label">🎯 絕對擊球打點 (Spike Reach)</div>
+          <div class="metric-value-box">
+            <span class="metric-value" id="valSpikeReach">3.32</span>
+            <span class="metric-unit">m</span>
+          </div>
+          <div class="metric-sub" id="subSpikeReach">離網高度: +89 cm</div>
+        </div>
+
+        <div class="metric-card accent-green">
+          <div class="metric-label">⏱️ 最高滯空時間 (Air Time)</div>
+          <div class="metric-value-box">
+            <span class="metric-value" id="valHangTime">0.74</span>
+            <span class="metric-unit">s</span>
+          </div>
+          <div class="metric-sub" id="subHangTime">垂直起跳摸高: 78 cm</div>
+        </div>
+
+        <div class="metric-card accent-orange">
+          <div class="metric-label">⚡ 扣球極速 (Max Velocity)</div>
+          <div class="metric-value-box">
+            <span class="metric-value" id="valSpikeSpeed">104</span>
+            <span class="metric-unit">km/h</span>
+          </div>
+          <div class="metric-sub" id="subSpikeSpeed">手臂揮拍角速度: 34.2 rad/s</div>
+        </div>
+      </div>
+
+      <div class="diagnosis-box">
+        <div class="diagnosis-header">
+          <div class="diagnosis-title">
+            <span>📋 本場賽後 AI 戰術教練評語</span>
+          </div>
+          <span class="diagnosis-tag" id="diagnosisConfidence">信賴度: 97.4%</span>
+        </div>
+        <p class="diagnosis-text" id="diagnosisText">
+          系統正在監控本場比賽中。請點選「🚀 啟動當前比賽 AI 深度運算」，系統將對整場攻防軌跡、關鍵打點與戰術得失分進行深入解算。
+        </p>
+      </div>
+
+      <!-- 選定球員個人技術攻守細項指標 -->
+      <div class="stats-section-title" style="margin-top: 14px;">本場選定球員攻守技術實測指標 // SKILL BREAKDOWN</div>
+      <div class="skills-detail-grid">
+        <div class="skill-stat-card">
+          <div class="skill-stat-title"><span>🎯 扣球進攻</span><span id="skillSpikeRate" style="color: var(--brand-blue);">50.0%</span></div>
+          <div class="skill-stat-val" id="skillSpikeVal">14 / 28</div>
+          <div class="skill-stat-sub" id="skillSpikeErr">得分 14 • 失誤 2</div>
+        </div>
+        <div class="skill-stat-card">
+          <div class="skill-stat-title"><span>🛡️ 網前攔網</span><span id="skillBlockSub" style="color: var(--brand-emerald);">+2 分</span></div>
+          <div class="skill-stat-val" id="skillBlockVal">2 攔死</div>
+          <div class="skill-stat-sub" id="skillBlockTouches">有效撐起 4 次</div>
+        </div>
+        <div class="skill-stat-card">
+          <div class="skill-stat-title"><span>⚡ 發球表現</span><span id="skillServeRate" style="color: var(--brand-orange);">Ace: 2</span></div>
+          <div class="skill-stat-val" id="skillServeVal">14 次發球</div>
+          <div class="skill-stat-sub" id="skillServeErr">破壞 5 • 失誤 2</div>
+        </div>
+        <div class="skill-stat-card">
+          <div class="skill-stat-title"><span>🏐 接發防守</span><span id="skillRecRate" style="color: #6366f1;">82.0%</span></div>
+          <div class="skill-stat-val" id="skillDigVal">8 次救球</div>
+          <div class="skill-stat-sub" id="skillDigEx">優質起球 6 次</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 全場 12 人完整攻守技術統計表與比賽得失分賽事實錄簿 -->
+  <section class="boxscore-panel" style="margin: 0 28px 24px 28px;">
+    <div class="panel-header" style="margin-bottom: 8px;">
+      <h2 class="panel-title">
+        <span>03</span> 全場 12 人完整攻守技術統計表 // OFFICIAL MATCH BOX SCORE
+      </h2>
+      <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">💡 點選表格任一球員列，即可同步更新上方運動科學儀表板與 AI 姿態骨架</span>
+    </div>
+
+    <!-- 雙方隊伍總數據對比條 -->
+    <div class="team-summary-bar">
+      <div class="team-sum-side">
+        <span style="font-size: 1.4rem;">🔵</span>
+        <div>
+          <div style="font-weight: 800; font-size: 1.0rem; color: #0f172a;">國立體育大學 (藍隊 / 主隊)</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted);">扣球 40 分 • 攔網 10 分 • 發球 Ace 3 分 • 對手失誤失分 12 分 • 一傳到位率 92.5%</div>
+        </div>
+        <div class="team-sum-score team-sum-blue">25</div>
+      </div>
+      <div class="team-sum-center">
+        <div style="letter-spacing: 1px;">FINAL SCORE</div>
+        <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a;">25 : 23</div>
+        <div>比賽耗時: 28分45秒</div>
+      </div>
+      <div class="team-sum-side" style="justify-content: flex-end;">
+        <div class="team-sum-score team-sum-red">23</div>
+        <div style="text-align: right;">
+          <div style="font-weight: 800; font-size: 1.0rem; color: #0f172a;">中原大學 (紅隊 / 客隊)</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted);">扣球 43 分 • 攔網 11 分 • 發球 Ace 5 分 • 對手失誤失分 9 分 • 一傳到位率 88.0%</div>
+        </div>
+        <span style="font-size: 1.4rem;">🔴</span>
+      </div>
+    </div>
+
+    <!-- 12 位球員攻守技術數據總表 -->
+    <div class="boxscore-table-wrap">
+      <table class="boxscore-table" id="boxScoreTable">
+        <thead>
+          <tr>
+            <th>隊伍</th>
+            <th>號碼</th>
+            <th>姓名</th>
+            <th>位置</th>
+            <th>總得分</th>
+            <th>扣球 (得/次)</th>
+            <th>扣球成功率</th>
+            <th>攔死得分</th>
+            <th>發球 Ace</th>
+            <th>防守救球</th>
+            <th>接發到位率</th>
+            <th>個人失誤</th>
+          </tr>
+        </thead>
+        <tbody id="boxScoreTableBody">
+          <!-- 由 JS 自動填入 12 位球員數據 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 本場賽事實錄：從 0:0 開始記錄誰因為甚麼得分、誰失誤 -->
+    <div class="stats-section-title" style="margin-top: 16px;">
+      本場賽況得失分與失誤詳細實錄簿 // PLAY-BY-PLAY DETAILED MATCH LOG (START FROM 0:0)
+    </div>
+    <div class="playbyplay-container" id="playByPlayList">
+      <!-- 由 JS 自動填入回合得失分紀錄 -->
+    </div>
+  </section>
+
+  <footer>
+    <div>VOLLEYBALL REAL-ARENA SIMULATION & KINEMATICS SYSTEM • v7.5</div>
+    <div>FEATURES: DYNAMIC 12-PLAYER TACTICAL SHIFTS • REAL-TIME TRACKING BOXES • 5-MINUTE EXTENDED MATCH</div>
+  </footer>
+
+  <!-- ==================== JavaScript 程式碼核心 ==================== -->
+  <script>
+    /**
+     * 排球賽後 AI 戰情分析系統 - v7.0 (真實球場 + 骨架像素對齊版)
+     */
+
+    const MATCHES_DATABASE = [
+      {
+        id: 1,
+        title: "2026 全國大專排球聯賽 男子公開一級 冠軍決賽 (國立體大 藍隊 vs 中原大學 紅隊)",
+        badge: "🏆 金牌決賽 (0:0 開局連續實錄)",
+        winner: "blue",
+        finalScore: "25 : 23",
+        mvpPlayerId: 1,
+        rallies: [
+          {
+            scoreBlue: 0, scoreRed: 0,
+            desc: "【開局 0:0】紅隊 #7 高橋健 躍起大力跳發 ➔ 藍隊 #5 蘇育民 穩健一傳到位 ➔ #3 許家豪 4號位長平快 ➔ #1 林晨皓 空中大斜線重扣突破雙人攔網打在底線！藍隊率先得第一分！(1:0)",
+            duration: 9,
+            scorer: { id: 1, name: "林晨皓", team: "blue", type: "4號位超手暴扣" },
+            error: null,
+            keyAssist: "蘇育民 完美一傳 (0.16s 起球) + 許家豪 平拉開托球",
+            server: { team: "red", id: 7, pos: { x: 8.8, y: 2.4, z: 2.2 } },
+            events: [
+              { t: 0.0, ball: { x: 8.8, y: 2.4, z: 2.2 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.4, z: 2.6 } },
+              { t: 2.2, ball: { x: -6.5, y: -0.2, z: 1.1 }, contactId: 5 },
+              { t: 3.8, ball: { x: -2.0, y: 1.5, z: 2.4 }, contactId: 3 },
+              { t: 5.2, ball: { x: -3.2, y: -2.4, z: 3.32 }, contactId: 1, isSpike: true },
+              { t: 6.2, ball: { x: 6.8, y: 2.2, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 1, scoreRed: 0,
+            desc: "【藍隊 1:0 領先】藍隊 #1 林晨皓 強力跳發打向紅隊右後場 ➔ 紅隊 #11 劉子玄 魚躍一傳半到位 ➔ #9 張宏偉 修正高球托至二號位 ➔ 紅隊 #8 李承祐 扣球發力過猛出界失誤！藍隊再下一城 (2:0)",
+            duration: 9,
+            scorer: { id: 1, name: "藍隊 (對手扣球出界)", team: "blue", type: "對方非受迫性失誤" },
+            error: { id: 8, name: "李承祐", team: "red", type: "扣球直線出界 (Attack Out)" },
+            keyAssist: "林晨皓 跳發壓迫後排深區",
+            server: { team: "blue", id: 1, pos: { x: -8.8, y: -2.4, z: 2.2 } },
+            events: [
+              { t: 0.0, ball: { x: -8.8, y: -2.4, z: 2.2 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.2, z: 2.5 } },
+              { t: 2.2, ball: { x: 6.5, y: 1.5, z: 1.1 }, contactId: 11 },
+              { t: 3.6, ball: { x: 2.2, y: 1.8, z: 2.3 }, contactId: 9 },
+              { t: 5.0, ball: { x: 1.8, y: 2.4, z: 3.25 }, contactId: 8, isSpike: true },
+              { t: 6.1, ball: { x: -9.8, y: 4.8, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 2, scoreRed: 0,
+            desc: "【藍隊 2:0】藍隊 #1 繼續跳發 ➔ 紅隊 #7 高橋健 接發到位 ➔ #9 張宏偉 網前背快平傳 ➔ 紅隊 #10 鄭志強 3號位 A快攻暴扣打穿藍隊攔網！紅隊斬獲首分！(2:1)",
+            duration: 9,
+            scorer: { id: 10, name: "鄭志強", team: "red", type: "3號位 A快攻重扣" },
+            error: null,
+            keyAssist: "張宏偉 網前高隱蔽性單手背傳",
+            server: { team: "blue", id: 1, pos: { x: -8.8, y: -2.4, z: 2.2 } },
+            events: [
+              { t: 0.0, ball: { x: -8.8, y: -2.4, z: 2.2 } },
+              { t: 1.1, ball: { x: 0.0, y: 0.0, z: 2.5 } },
+              { t: 2.1, ball: { x: 6.0, y: -1.0, z: 1.1 }, contactId: 7 },
+              { t: 3.4, ball: { x: 2.0, y: 0.5, z: 2.3 }, contactId: 9 },
+              { t: 4.6, ball: { x: 1.2, y: 0.0, z: 3.38 }, contactId: 10, isSpike: true },
+              { t: 5.5, ball: { x: -5.2, y: 0.8, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 2, scoreRed: 1,
+            desc: "【紅隊 2:1 追分】紅隊 #10 鄭志強 站上發球線發出強烈飄球，球在空中急墜 ➔ 藍隊 #6 黃昱翔 接發判斷失誤擦臂飛出場外！紅隊發球直接得分 Ace！雙方 2:2 平手！",
+            duration: 8,
+            scorer: { id: 10, name: "鄭志強", team: "red", type: "急墜平衝飄球 Ace" },
+            error: { id: 6, name: "黃昱翔", team: "blue", type: "接發球判斷失誤 (Reception Error)" },
+            keyAssist: "無",
+            server: { team: "red", id: 10, pos: { x: 8.8, y: 0.0, z: 2.1 } },
+            events: [
+              { t: 0.0, ball: { x: 8.8, y: 0.0, z: 2.1 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.2, z: 2.4 } },
+              { t: 2.2, ball: { x: -6.2, y: -2.0, z: 1.0 }, contactId: 6 },
+              { t: 3.2, ball: { x: -9.5, y: -4.5, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 2, scoreRed: 2,
+            desc: "【2:2 平手】紅隊 #10 再次發球 ➔ 蘇育民 穩健一傳 ➔ 藍隊 #3 許家豪 假裝雙手托球，突然輕巧手腕一抖網前二次球吊入紅隊空檔！藍隊再度超前！(3:2)",
+            duration: 9,
+            scorer: { id: 3, name: "許家豪", team: "blue", type: "網前假托真扣二次球 (Dump Shot)" },
+            error: null,
+            keyAssist: "蘇育民 82km/h 發球完美卸力到位",
+            server: { team: "red", id: 10, pos: { x: 8.8, y: 0.0, z: 2.1 } },
+            events: [
+              { t: 0.0, ball: { x: 8.8, y: 0.0, z: 2.1 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.0, z: 2.4 } },
+              { t: 2.2, ball: { x: -6.5, y: 0.0, z: 1.1 }, contactId: 5 },
+              { t: 3.8, ball: { x: -1.8, y: 1.8, z: 2.6 }, contactId: 3, isSpike: true },
+              { t: 5.0, ball: { x: 3.5, y: -0.5, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 14, scoreRed: 15,
+            desc: "【中段 14:15】藍隊陳冠廷二號位強攻直線 ➔ 紅隊 #10 鄭志強 與 #7 高橋健 雙人密合起跳，手掌深入網前直接封殺攔死在藍隊三米線內！(14:16)",
+            duration: 9,
+            scorer: { id: 10, name: "鄭志強", team: "red", type: "雙人密合網前攔死得分 (Block Kill)" },
+            error: { id: 2, name: "陳冠廷", team: "blue", type: "扣球被直接攔死 (Blocked)" },
+            keyAssist: "高橋健 邊路外側手封線",
+            server: { team: "blue", id: 2, pos: { x: -8.8, y: 2.2, z: 2.1 } },
+            events: [
+              { t: 0.0, ball: { x: -8.8, y: 2.2, z: 2.1 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.0, z: 2.5 } },
+              { t: 2.2, ball: { x: 6.2, y: 1.0, z: 1.1 }, contactId: 11 },
+              { t: 3.6, ball: { x: 2.0, y: 1.8, z: 2.3 }, contactId: 9 },
+              { t: 4.8, ball: { x: -1.8, y: 2.4, z: 3.25 }, contactId: 2, isSpike: true },
+              { t: 5.4, ball: { x: -0.2, y: 2.2, z: 2.9 }, contactId: 10 },
+              { t: 6.2, ball: { x: -2.8, y: 1.8, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 19, scoreRed: 20,
+            desc: "【關鍵 19:20】紅隊高橋健 4號位超手暴扣 ➔ 藍隊自由人 #5 蘇育民 展現 0.14s 神經反應魚躍撲救驚險救起！➔ #2 陳冠廷 後排衝刺小斜線重扣落地得分！(20:20 平手)",
+            duration: 10,
+            scorer: { id: 2, name: "陳冠廷", team: "blue", type: "後排衝刺小斜線重扣" },
+            error: null,
+            keyAssist: "蘇育民 0.14s 極限魚躍起球",
+            server: { team: "red", id: 8, pos: { x: 8.8, y: -2.0, z: 2.1 } },
+            events: [
+              { t: 0.0, ball: { x: 8.8, y: -2.0, z: 2.1 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.0, z: 2.5 } },
+              { t: 2.2, ball: { x: 6.5, y: -1.0, z: 1.2 }, contactId: 8 },
+              { t: 3.6, ball: { x: 2.2, y: 2.2, z: 2.4 }, contactId: 9 },
+              { t: 4.8, ball: { x: 3.5, y: 2.2, z: 3.34 }, contactId: 7, isSpike: true },
+              { t: 5.6, ball: { x: -6.5, y: 0.2, z: 0.4 }, contactId: 5 },
+              { t: 7.0, ball: { x: -1.8, y: 2.4, z: 3.25 }, contactId: 2, isSpike: true },
+              { t: 8.0, ball: { x: 6.5, y: -1.8, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 21, scoreRed: 22,
+            desc: "【局末 21:22】紅隊 #7 跳發 ➔ 藍隊 #5 蘇育民 穩健一傳 ➔ #3 許家豪 背傳二號位 ➔ #2 陳冠廷 直線重砸壓底線得分！雙方戰成 22:22 平手！",
+            duration: 9,
+            scorer: { id: 2, name: "陳冠廷", team: "blue", type: "二號位端線直線重砸" },
+            error: null,
+            keyAssist: "許家豪 弧度背托球",
+            server: { team: "red", id: 7, pos: { x: 8.8, y: 2.4, z: 2.2 } },
+            events: [
+              { t: 0.0, ball: { x: 8.8, y: 2.4, z: 2.2 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.4, z: 2.6 } },
+              { t: 2.2, ball: { x: -6.5, y: -0.2, z: 1.1 }, contactId: 5 },
+              { t: 3.8, ball: { x: -2.0, y: 1.5, z: 2.4 }, contactId: 3 },
+              { t: 5.2, ball: { x: -1.8, y: 2.5, z: 3.25 }, contactId: 2, isSpike: true },
+              { t: 6.2, ball: { x: 7.2, y: 2.8, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 22, scoreRed: 22,
+            desc: "【關鍵 22:22 平手】紅隊進攻回合，三號位趙子豪快攻 ➔ 藍隊 #4 吳俊諺 網前定點單人攔死！藍隊 23:22 逆轉反超比分！",
+            duration: 9,
+            scorer: { id: 4, name: "吳俊諺", team: "blue", type: "3號位單人定點攔死 (Solo Block Kill)" },
+            error: { id: 12, name: "趙子豪", team: "red", type: "快攻被直接攔回 (Blocked)" },
+            keyAssist: "林晨皓 邊路牽制有效起跳",
+            server: { team: "blue", id: 3, pos: { x: -8.8, y: 2.0, z: 2.1 } },
+            events: [
+              { t: 0.0, ball: { x: -8.8, y: 2.0, z: 2.1 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.2, z: 2.5 } },
+              { t: 2.2, ball: { x: 6.2, y: 0.0, z: 1.1 }, contactId: 11 },
+              { t: 3.6, ball: { x: 2.0, y: 0.6, z: 2.3 }, contactId: 9 },
+              { t: 4.8, ball: { x: 1.0, y: 0.0, z: 3.22 }, contactId: 12, isSpike: true },
+              { t: 5.4, ball: { x: -0.4, y: 0.0, z: 2.8 }, contactId: 4 },
+              { t: 6.2, ball: { x: 1.8, y: 0.0, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 23, scoreRed: 22,
+            desc: "【膠著 23:22】藍隊發球 ➔ 紅隊組織一攻 ➔ #7 高橋健 後排六號位 Pipe 暴扣突破得手！雙方再次戰成 23:23 殊死平手！",
+            duration: 9,
+            scorer: { id: 7, name: "高橋 健", team: "red", type: "後排 Pipe 暴扣 (106km/h)" },
+            error: null,
+            keyAssist: "張宏偉 精確後排引導托球",
+            server: { team: "blue", id: 4, pos: { x: -8.8, y: 0.0, z: 2.0 } },
+            events: [
+              { t: 0.0, ball: { x: -8.8, y: 0.0, z: 2.0 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.0, z: 2.4 } },
+              { t: 2.2, ball: { x: 6.0, y: 1.0, z: 1.1 }, contactId: 11 },
+              { t: 3.6, ball: { x: 2.0, y: 1.8, z: 2.2 }, contactId: 9 },
+              { t: 4.8, ball: { x: 3.8, y: 2.2, z: 3.34 }, contactId: 7, isSpike: true },
+              { t: 5.8, ball: { x: -7.2, y: 2.5, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 23, scoreRed: 23,
+            desc: "【冠軍賽聽牌 23:23】藍隊接發球到位 ➔ 許家豪 4號位長拉開 ➔ #1 林晨皓 空中打點 3.32m 暴扣大斜線突破紅隊雙人攔網打在底角！藍隊 24:23 率先取得賽末冠軍點！",
+            duration: 9,
+            scorer: { id: 1, name: "林晨皓", team: "blue", type: "4號位超手暴扣大斜線 (3.32m 打點)" },
+            error: null,
+            keyAssist: "許家豪 頂級長拉開弧線托球",
+            server: { team: "red", id: 7, pos: { x: 8.8, y: 2.4, z: 2.2 } },
+            events: [
+              { t: 0.0, ball: { x: 8.8, y: 2.4, z: 2.2 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.6, z: 2.6 } },
+              { t: 2.2, ball: { x: -6.5, y: -0.5, z: 1.1 }, contactId: 5 },
+              { t: 3.8, ball: { x: -2.0, y: 2.2, z: 2.4 }, contactId: 3 },
+              { t: 5.2, ball: { x: -3.2, y: -2.8, z: 3.32 }, contactId: 1, isSpike: true },
+              { t: 6.2, ball: { x: 6.8, y: 1.5, z: 0.0 }, hitFloor: true }
+            ]
+          },
+          {
+            scoreBlue: 24, scoreRed: 23,
+            desc: "【賽末冠軍點 24:23】藍隊 #1 林晨皓 大力跳發迫使紅隊修正高球 ➔ 紅隊二號位重扣 ➔ 蘇育民魚躍防守救起 ➔ 林晨皓 104km/h 扣球直接打在底線內！藍隊 25:23 勇奪 2026 全國大專聯賽男子公開一級總冠軍！",
+            duration: 10,
+            scorer: { id: 1, name: "林晨皓", team: "blue", type: "冠軍點絕殺！104km/h 重扣壓底線得分" },
+            error: null,
+            keyAssist: "蘇育民 魚躍起球 + 許家豪 反擊修正",
+            server: { team: "blue", id: 1, pos: { x: -8.8, y: -2.4, z: 2.2 } },
+            events: [
+              { t: 0.0, ball: { x: -8.8, y: -2.4, z: 2.2 } },
+              { t: 1.2, ball: { x: 0.0, y: 0.2, z: 2.6 } },
+              { t: 2.2, ball: { x: 6.5, y: -1.0, z: 1.2 }, contactId: 8 },
+              { t: 3.6, ball: { x: 2.2, y: 2.2, z: 2.4 }, contactId: 9 },
+              { t: 4.8, ball: { x: 1.8, y: 2.2, z: 3.24 }, contactId: 8, isSpike: true },
+              { t: 5.6, ball: { x: -5.8, y: 0.2, z: 0.5 }, contactId: 5 },
+              { t: 7.0, ball: { x: -3.0, y: -2.6, z: 3.32 }, contactId: 1, isSpike: true },
+              { t: 8.0, ball: { x: 7.5, y: 2.0, z: 0.0 }, hitFloor: true }
+            ]
+          }
+        ],
+        mvpStats: {
+          spikeReach: 3.32, hangTime: 0.74, spikeSpeed: 104, jumpHeight: 78, armVelocity: 34.2,
+          shotLine: 35, shotCross: 48, shotTip: 17,
+          radar: [92, 70, 80, 75, 86],
+          diagnosis: "⚡ 【本場 MVP 關鍵逆轉分析】林晨皓在關鍵分連得 2 分，打點達 3.32m (超手 +89cm)。面對紅隊雙人攔網，第3步急停煞車起跳極為堅決，滯空 0.74s 完整釋放 104 km/h 重扣，是藍隊奪冠第一功臣。"
+        }
+      }
+    ];
+
+    const CHAMPIONSHIP_MATCH = MATCHES_DATABASE[0];
+
+    const PLAYERS_DATABASE = {
+      1: {
+        id: 1, name: "林晨皓", number: 1, pos: "主攻手 (OH)", team: "blue",
+        height: "191cm", weight: "84kg",
+        spikeReach: 3.32, hangTime: 0.74, spikeSpeed: 104, jumpHeight: 78, armVelocity: 34.2,
+        shotLine: 35, shotCross: 48, shotTip: 17,
+        radar: [92, 70, 80, 75, 86],
+        skills: {
+          spikeRate: "50.0%", spikeVal: "9 / 18", spikeErr: "得分 9 • 失誤 1",
+          blockSub: "+2 分", blockVal: "2 攔死", blockTouches: "有效撐起 5 次",
+          serveRate: "Ace: 1", serveVal: "16 次發球", serveErr: "破壞 6 • 失誤 1",
+          recRate: "82.5%", digVal: "6 次救球", digEx: "優質起球 5 次"
+        },
+        tableStats: { points: 12, spikes: "9 / 18", spikePct: "50.0%", blocks: 2, aces: 1, digs: 6, recPct: "82.5%", errors: 2 },
+        diagnosis: "⚡ 【主攻手 (OH) 賽後評價】本場關鍵得分先生！4號位強攻 18 扣 9 中，打點達 3.32m 超越男排球網 89cm。在 23:23 與 24:23 決勝時刻頂住壓力，連續大斜線暴扣與 104km/h 跳發破壞一傳，全場個人斬獲 12 分，是藍隊封王的頭號功臣。"
+      },
+      2: {
+        id: 2, name: "陳冠廷", number: 2, pos: "接應副攻 (OP)", team: "blue",
+        height: "193cm", weight: "86kg",
+        spikeReach: 3.25, hangTime: 0.69, spikeSpeed: 98, jumpHeight: 72, armVelocity: 31.8,
+        shotLine: 55, shotCross: 35, shotTip: 10,
+        radar: [84, 65, 72, 70, 88],
+        skills: {
+          spikeRate: "45.5%", spikeVal: "5 / 11", spikeErr: "得分 5 • 失誤 1",
+          blockSub: "+1 分", blockVal: "1 攔死", blockTouches: "有效撐起 3 次",
+          serveRate: "Ace: 0", serveVal: "12 次發球", serveErr: "破壞 3 • 失誤 0",
+          recRate: "75.0%", digVal: "4 次救球", digEx: "二傳過渡 3 次"
+        },
+        tableStats: { points: 6, spikes: "5 / 11", spikePct: "45.5%", blocks: 1, aces: 0, digs: 4, recPct: "75.0%", errors: 1 },
+        diagnosis: "🔥 【接應副攻 (OP) 賽後評價】二號位直線端線牽制力極強，11 扣 5 中貢獻 6 分。局末 20:20 與 21:22 藍隊落後時，陳冠廷兩度在右側強硬直線重砸得手壓制紅隊防線，全場僅 1 次非受迫性失誤，發揮沉穩可靠。"
+      },
+      3: {
+        id: 3, name: "許家豪", number: 3, pos: "舉球員 (S)", team: "blue",
+        height: "186cm", weight: "79kg",
+        spikeReach: 3.12, hangTime: 0.58, spikeSpeed: 72, jumpHeight: 60, armVelocity: 24.5,
+        shotLine: 20, shotCross: 15, shotTip: 65,
+        radar: [60, 68, 85, 90, 94],
+        skills: {
+          spikeRate: "50.0%", spikeVal: "1 / 2", spikeErr: "二次球得分 1 • 吊球 1",
+          blockSub: "+1 分", blockVal: "1 攔死", blockTouches: "手部密合 4 次",
+          serveRate: "Ace: 0", serveVal: "18 次發球", serveErr: "破壞 7 • 失誤 0",
+          recRate: "88.0%", digVal: "7 次救球", digEx: "精準到位配球 26 次"
+        },
+        tableStats: { points: 2, spikes: "1 / 2", spikePct: "50.0%", blocks: 1, aces: 0, digs: 7, recPct: "88.0%", errors: 0 },
+        diagnosis: "🧠 【大腦指揮官 舉球員 (S) 賽後評價】全場 0 失誤完美控盤！配球思路極為靈活，在紅隊重點封鎖 4 號位時，大膽分配 3 號位快攻與 2 號位背傳，且在 2:2 平手時上演精彩網前二次球偷襲得分，7 次防守起球更鞏固了二傳反擊流暢度。"
+      },
+      4: {
+        id: 4, name: "吳俊諺", number: 4, pos: "快攻手 (MB)", team: "blue",
+        height: "197cm", weight: "89kg",
+        spikeReach: 3.38, hangTime: 0.71, spikeSpeed: 92, jumpHeight: 75, armVelocity: 29.8,
+        shotLine: 20, shotCross: 65, shotTip: 15,
+        radar: [78, 95, 65, 58, 84],
+        skills: {
+          spikeRate: "60.0%", spikeVal: "3 / 5", spikeErr: "得分 3 • 快攻被守 1",
+          blockSub: "+2 分", blockVal: "2 攔死", blockTouches: "有效撐起 6 次",
+          serveRate: "Ace: 0", serveVal: "10 次發球", serveErr: "破壞 3 • 失誤 1",
+          recRate: "--", digVal: "2 次救球", digEx: "網前跟進 4 次"
+        },
+        tableStats: { points: 5, spikes: "3 / 5", spikePct: "60.0%", blocks: 2, aces: 0, digs: 2, recPct: "--", errors: 1 },
+        diagnosis: "🧱 【網前巨塔 快攻手 (MB) 賽後評價】身高 197cm、打點 3.38m 構築藍隊中路天羅地網。本場 2 次直接定點攔死、6 次有效撐起球，特別在 22:22 平局時單人封殺紅隊快攻，直接扭轉戰局奪回冠軍發球權！"
+      },
+      5: {
+        id: 5, name: "蘇育民", number: 5, pos: "自由球員 (L)", team: "blue",
+        height: "176cm", weight: "70kg",
+        spikeReach: 2.75, hangTime: 0.42, spikeSpeed: 45, jumpHeight: 42, armVelocity: 18.2,
+        shotLine: 0, shotCross: 0, shotTip: 100,
+        radar: [10, 10, 15, 98, 95],
+        skills: {
+          spikeRate: "不參與", spikeVal: "0 / 0", spikeErr: "自由人規則不扣球",
+          blockSub: "不參與", blockVal: "0 攔死", blockTouches: "自由人規則不攔網",
+          serveRate: "不參與", serveVal: "0 次發球", serveErr: "自由人不發球",
+          recRate: "96.0%", digVal: "11 次救球", digEx: "完美一傳 18 次"
+        },
+        tableStats: { points: 0, spikes: "0 / 0", spikePct: "--", blocks: 0, aces: 0, digs: 11, recPct: "96.0%", errors: 0 },
+        diagnosis: "🛡️ 【守護神 自由球員 (L) 賽後評價】堪稱決賽背後的最大隱形功臣！一傳到位率高達 96.0%，面對紅隊 100km/h 以上重扣展現 0.14 秒驚人神經反應，貢獻 11 次極限救球，包括局末兩度魚躍救球直接轉化為林晨皓的反攻得分。"
+      },
+      6: {
+        id: 6, name: "黃昱翔", number: 6, pos: "主攻手 (OH)", team: "blue",
+        height: "189cm", weight: "82kg",
+        spikeReach: 3.28, hangTime: 0.70, spikeSpeed: 99, jumpHeight: 74, armVelocity: 32.6,
+        shotLine: 42, shotCross: 45, shotTip: 13,
+        radar: [76, 70, 72, 78, 70],
+        skills: {
+          spikeRate: "37.5%", spikeVal: "3 / 8", spikeErr: "得分 3 • 出界 1",
+          blockSub: "+1 分", blockVal: "1 攔死", blockTouches: "有效撐起 3 次",
+          serveRate: "Ace: 0", serveVal: "11 次發球", serveErr: "破壞 2 • 失誤 1",
+          recRate: "80.0%", digVal: "5 次救球", digEx: "後排 Pipe 策應 4 次"
+        },
+        tableStats: { points: 4, spikes: "3 / 8", spikePct: "37.5%", blocks: 1, aces: 0, digs: 5, recPct: "80.0%", errors: 2 },
+        diagnosis: "⚔️ 【對角主攻 (OH) 賽後評價】分擔後排 Pipe 攻擊與後排防守重任，8 扣 3 中斬獲 4 分。開局曾有 1 次接發判斷失誤，但隨後迅速調整，後排六號位進攻屢屢撕開紅隊防線，為林晨皓爭取到多次單人對位良機。"
+      },
+      7: {
+        id: 7, name: "高橋 健", number: 7, pos: "主攻手 (OH)", team: "red",
+        height: "192cm", weight: "85kg",
+        spikeReach: 3.34, hangTime: 0.75, spikeSpeed: 106, jumpHeight: 80, armVelocity: 35.0,
+        shotLine: 38, shotCross: 50, shotTip: 12,
+        radar: [90, 72, 88, 74, 82],
+        skills: {
+          spikeRate: "47.4%", spikeVal: "9 / 19", spikeErr: "得分 9 • 被攔 1",
+          blockSub: "+1 分", blockVal: "1 攔死", blockTouches: "有效撐起 4 次",
+          serveRate: "Ace: 1", serveVal: "15 次發球", serveErr: "破壞 7 • 出界 1",
+          recRate: "81.0%", digVal: "5 次救球", digEx: "後排躍傳 3 次"
+        },
+        tableStats: { points: 11, spikes: "9 / 19", spikePct: "47.4%", blocks: 1, aces: 1, digs: 5, recPct: "81.0%", errors: 2 },
+        diagnosis: "🚀 【紅隊頭號砲手 (OH) 賽後評價】紅隊得分支柱，全場狂轟 11 分！扣球極速飆破 106 km/h，跳發球威脅極大。雖在賽末關鍵球被藍隊雙人攔網有效牽制，但整場展現頂級職業級別的重砲威懾力。"
+      },
+      8: {
+        id: 8, name: "李承祐", number: 8, pos: "接應副攻 (OP)", team: "red",
+        height: "194cm", weight: "87kg",
+        spikeReach: 3.26, hangTime: 0.68, spikeSpeed: 96, jumpHeight: 71, armVelocity: 31.2,
+        shotLine: 45, shotCross: 40, shotTip: 15,
+        radar: [75, 68, 65, 66, 68],
+        skills: {
+          spikeRate: "40.0%", spikeVal: "4 / 10", spikeErr: "得分 4 • 出界 2",
+          blockSub: "+1 分", blockVal: "1 攔死", blockTouches: "有效撐起 2 次",
+          serveRate: "Ace: 0", serveVal: "9 次發球", serveErr: "破壞 2 • 失誤 1",
+          recRate: "72.0%", digVal: "3 次救球", digEx: "協防補位 3 次"
+        },
+        tableStats: { points: 5, spikes: "4 / 10", spikePct: "40.0%", blocks: 1, aces: 0, digs: 3, recPct: "72.0%", errors: 3 },
+        diagnosis: "⚠️ 【接應副攻 (OP) 賽後評價】攻防兩端承擔大量右翼突破，斬獲 5 分。然而本場非受迫性失誤偏多 (3 次失誤，包括開局扣球出界與發球失誤)，在局末高壓下拉臂節奏稍顯急躁，需加強相持球的切角變化。"
+      },
+      9: {
+        id: 9, name: "張宏偉", number: 9, pos: "舉球員 (S)", team: "red",
+        height: "185cm", weight: "78kg",
+        spikeReach: 3.10, hangTime: 0.56, spikeSpeed: 70, jumpHeight: 58, armVelocity: 23.8,
+        shotLine: 10, shotCross: 10, shotTip: 80,
+        radar: [55, 62, 78, 86, 88],
+        skills: {
+          spikeRate: "100%", spikeVal: "1 / 1", spikeErr: "網前推深角 1",
+          blockSub: "+0 分", blockVal: "0 攔死", blockTouches: "單手破壞 2 次",
+          serveRate: "Ace: 0", serveVal: "14 次發球", serveErr: "破壞 4 • 失誤 1",
+          recRate: "85.0%", digVal: "6 次救球", digEx: "快攻連線 12 次"
+        },
+        tableStats: { points: 1, spikes: "1 / 1", spikePct: "100%", blocks: 0, aces: 0, digs: 6, recPct: "85.0%", errors: 1 },
+        diagnosis: "🎯 【紅隊指揮官 舉球員 (S) 賽後評價】與快攻手鄭志強的 A 快攻連線極具默契，多次騙開藍隊攔網副攻。可惜在 20 分以後過度依賴 4 號位高橋健高球強攻，戰術變化單一，遭藍隊識破並被吳俊諺攔截。"
+      },
+      10: {
+        id: 10, name: "鄭志強", number: 10, pos: "快攻手 (MB)", team: "red",
+        height: "198cm", weight: "91kg",
+        spikeReach: 3.40, hangTime: 0.72, spikeSpeed: 94, jumpHeight: 76, armVelocity: 30.5,
+        shotLine: 25, shotCross: 60, shotTip: 15,
+        radar: [82, 94, 76, 55, 85],
+        skills: {
+          spikeRate: "50.0%", spikeVal: "3 / 6", spikeErr: "得分 3 • 被守 1",
+          blockSub: "+2 分", blockVal: "2 攔死", blockTouches: "有效撐起 7 次",
+          serveRate: "Ace: 1", serveVal: "13 次發球", serveErr: "破壞 5 • 失誤 0",
+          recRate: "--", digVal: "2 次救球", digEx: "中路覆蓋 8 次"
+        },
+        tableStats: { points: 6, spikes: "3 / 6", spikePct: "50.0%", blocks: 2, aces: 1, digs: 2, recPct: "--", errors: 1 },
+        diagnosis: "🧱 【紅隊鐵壁 快攻手 (MB) 賽後評價】全場最高摸高打點 3.40m！攔網手掌伸入過網深入有效封鎖角度，本場 2 次攔死、7 次有效撐起，並在 2:1 時以一記飄球直接發出 Ace，中路戰術壓迫感十足。"
+      },
+      11: {
+        id: 11, name: "劉子玄", number: 11, pos: "自由球員 (L)", team: "red",
+        height: "175cm", weight: "69kg",
+        spikeReach: 2.72, hangTime: 0.40, spikeSpeed: 40, jumpHeight: 40, armVelocity: 17.5,
+        shotLine: 0, shotCross: 0, shotTip: 100,
+        radar: [10, 10, 15, 94, 88],
+        skills: {
+          spikeRate: "不參與", spikeVal: "0 / 0", spikeErr: "自由人規則不扣球",
+          blockSub: "不參與", blockVal: "0 攔死", blockTouches: "自由人規則不攔網",
+          serveRate: "不參與", serveVal: "0 次發球", serveErr: "自由人不發球",
+          recRate: "92.5%", digVal: "9 次救球", digEx: "完美一傳 15 次"
+        },
+        tableStats: { points: 0, spikes: "0 / 0", spikePct: "--", blocks: 0, aces: 0, digs: 9, recPct: "92.5%", errors: 1 },
+        diagnosis: "🛡️ 【紅隊防線樞紐 自由球員 (L) 賽後評價】全場 9 次精彩撲救，一傳到位率 92.5%。雖在第 2 回合面對林晨皓的深區跳發曾出現半到位瑕疵，但隨後穩住陣腳，為張宏偉提供了穩定的一傳輸送基石。"
+      },
+      12: {
+        id: 12, name: "趙子豪", number: 12, pos: "快攻手 (MB)", team: "red",
+        height: "195cm", weight: "88kg",
+        spikeReach: 3.35, hangTime: 0.69, spikeSpeed: 91, jumpHeight: 73, armVelocity: 29.2,
+        shotLine: 15, shotCross: 70, shotTip: 15,
+        radar: [72, 86, 68, 52, 80],
+        skills: {
+          spikeRate: "50.0%", spikeVal: "2 / 4", spikeErr: "得分 2 • 被攔 1",
+          blockSub: "+1 分", blockVal: "1 攔死", blockTouches: "有效撐起 4 次",
+          serveRate: "Ace: 0", serveVal: "8 次發球", serveErr: "破壞 2 • 失誤 1",
+          recRate: "--", digVal: "1 次救球", digEx: "邊路攔網跟進 5 次"
+        },
+        tableStats: { points: 3, spikes: "2 / 4", spikePct: "50.0%", blocks: 1, aces: 0, digs: 1, recPct: "--", errors: 1 },
+        diagnosis: "🌲 【副攻快攻手 (MB) 賽後評價】與鄭志強輪替構築紅隊雙塔，4 扣 2 中拿下 3 分，1 次封死藍隊 4 號位小斜線。可惜在 22:22 平局關鍵分時跑動快攻被吳俊諺直接單人攔死，成為比分失守的轉折點。"
+      }
+    };
+
+    const PLAYERS_ROSTER = PLAYERS_DATABASE;
+
+    class CyberAudioSynth {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.lastSqueakTime = 0;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+      }
+
+      // 1. 接球音效：「蹦！」(BENG / PUMP - 沉穩渾厚皮質觸球基音與低頻反彈)
+      playReceiveBall() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        
+        // 沉穩強勁的「蹦！」衝擊主體 (185Hz 陡降至 45Hz)
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(185, now);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 0.15);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.55, now + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
+
+        // 排球腔體受壓低頻共鳴 (Sub boom: 110Hz -> 38Hz)
+        const subOsc = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        subOsc.type = 'triangle';
+        subOsc.frequency.setValueAtTime(110, now);
+        subOsc.frequency.exponentialRampToValueAtTime(38, now + 0.14);
+        subGain.gain.setValueAtTime(0.35, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        subOsc.connect(subGain);
+        subGain.connect(this.ctx.destination);
+        subOsc.start(now);
+        subOsc.stop(now + 0.14);
+
+        // 手臂皮質接觸短暫「噗」音
+        this.playFilteredNoise(now, 0.05, 340, 0.28);
+      }
+
+      // 2. 扣球大力重扣音效：「ㄅㄧㄤˋ！！」(HEAVY SPIKE SMASH - 極致厚重、力量爆棚的超手重扣)
+      playSpikeHit() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+
+        // 總線母帶壓縮器：將瞬態拍擊與重低音深度融合，營造劇烈衝擊厚重感
+        const compressor = this.ctx.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-14, now);
+        compressor.knee.setValueAtTime(10, now);
+        compressor.ratio.setValueAtTime(8, now);
+        compressor.attack.setValueAtTime(0.002, now);
+        compressor.release.setValueAtTime(0.2, now);
+        compressor.connect(this.ctx.destination);
+
+        // --- ①【ㄅㄧ】超強手掌破風抽擊聲 (Stinging Palm Slap Crack) ---
+        this.playBiangSnap(now, 0.065, 2400, 0.95, compressor);
+
+        // --- ②【ㄤˋ】厚重扎實的皮球形變撞擊主體 (Heavy Punchy Mid-Low Body) ---
+        const bodyOsc = this.ctx.createOscillator();
+        const bodyGain = this.ctx.createGain();
+        const bodyFilter = this.ctx.createBiquadFilter();
+
+        bodyOsc.type = 'triangle';
+        // 從 340Hz 猛力下沉至 45Hz，完全消除電子雷射感，帶來真實排球受力衝擊
+        bodyOsc.frequency.setValueAtTime(340, now);
+        bodyOsc.frequency.exponentialRampToValueAtTime(110, now + 0.035);
+        bodyOsc.frequency.exponentialRampToValueAtTime(45, now + 0.28);
+
+        bodyFilter.type = 'lowpass';
+        bodyFilter.frequency.setValueAtTime(850, now);
+        bodyFilter.frequency.exponentialRampToValueAtTime(160, now + 0.22);
+        bodyFilter.Q.setValueAtTime(2.8, now);
+
+        bodyGain.gain.setValueAtTime(0.001, now);
+        bodyGain.gain.linearRampToValueAtTime(0.85, now + 0.003); // 巨幅瞬間攻擊力
+        bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+        bodyOsc.connect(bodyFilter);
+        bodyFilter.connect(bodyGain);
+        bodyGain.connect(compressor);
+        bodyOsc.start(now);
+        bodyOsc.stop(now + 0.3);
+
+        // --- ③【大力重扣震撼低音】極低頻轟鳴 (Seismic Sub-Bass Thud: 155Hz -> 28Hz) ---
+        const subOsc = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        subOsc.type = 'sine';
+        subOsc.frequency.setValueAtTime(155, now);
+        subOsc.frequency.exponentialRampToValueAtTime(65, now + 0.05);
+        subOsc.frequency.exponentialRampToValueAtTime(28, now + 0.32);
+
+        subGain.gain.setValueAtTime(0.001, now);
+        subGain.gain.linearRampToValueAtTime(0.92, now + 0.005);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        subOsc.connect(subGain);
+        subGain.connect(compressor);
+        subOsc.start(now);
+        subOsc.stop(now + 0.35);
+
+        // --- ④【木地板受力震動與場館空間餘響】(Gym Floor Resonance & Slapback) ---
+        this.playFloorImpactRumble(now, 0.28, 0.38, compressor);
+      }
+
+      playBiangSnap(time, duration, filterFreq, volume, destination) {
+        try {
+          const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.2));
+          }
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = buffer;
+
+          const hpFilter = this.ctx.createBiquadFilter();
+          hpFilter.type = 'highpass';
+          hpFilter.frequency.setValueAtTime(1200, time);
+
+          const peakFilter = this.ctx.createBiquadFilter();
+          peakFilter.type = 'peaking';
+          peakFilter.frequency.setValueAtTime(filterFreq, time);
+          peakFilter.gain.setValueAtTime(12, time);
+          peakFilter.Q.setValueAtTime(2.0, time);
+
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(volume, time);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+          noise.connect(hpFilter);
+          hpFilter.connect(peakFilter);
+          peakFilter.connect(gain);
+          gain.connect(destination || this.ctx.destination);
+          noise.start(time);
+        } catch (e) {}
+      }
+
+      playFloorImpactRumble(time, duration, volume, destination) {
+        try {
+          const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.32));
+          }
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = buffer;
+
+          const lpf = this.ctx.createBiquadFilter();
+          lpf.type = 'lowpass';
+          lpf.frequency.setValueAtTime(240, time);
+          lpf.frequency.exponentialRampToValueAtTime(60, time + duration);
+
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(volume, time);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+          noise.connect(lpf);
+          lpf.connect(gain);
+          gain.connect(destination || this.ctx.destination);
+          noise.start(time);
+        } catch (e) {}
+      }
+
+      // 3. 球員起跳攻擊音效 (強大蹬地與空中推進破風呼嘯聲)
+      playJumpTakeoff() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+
+        // 蹬地微低頻
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(130, now);
+        osc.frequency.exponentialRampToValueAtTime(35, now + 0.16);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
+
+        // 空氣騰空嘯聲
+        this.playSweptNoise(now, 0.2, 280, 1250, 0.1);
+      }
+
+      // 4. 球員跑動/急停煞車時排球鞋磨木地板的經典吱吱聲 (Shoe Squeaks on Maple Court)
+      playShoeSqueak() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        // 限制頻率避免過於刺耳
+        if (now - this.lastSqueakTime < 0.22) return;
+        this.lastSqueakTime = now;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'sawtooth';
+        // 經典高頻橡膠摩擦音高 (1900Hz - 2500Hz 微幅波動)
+        const baseFreq = 2050 + (Math.random() - 0.5) * 380;
+        osc.frequency.setValueAtTime(baseFreq, now);
+        osc.frequency.linearRampToValueAtTime(baseFreq * 1.14, now + 0.035);
+        osc.frequency.linearRampToValueAtTime(baseFreq * 0.91, now + 0.085);
+
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(baseFreq, now);
+        filter.Q.setValueAtTime(9.5, now);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.09, now + 0.018);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.095);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.095);
+      }
+
+      playFilteredNoise(time, duration, filterFreq, volume) {
+        try {
+          const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1);
+          }
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = buffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(filterFreq, time);
+          filter.Q.setValueAtTime(3.2, time);
+
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(volume, time);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          noise.start(time);
+        } catch (e) {}
+      }
+
+      playSweptNoise(time, duration, startFreq, endFreq, volume) {
+        try {
+          const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1);
+          }
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = buffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(startFreq, time);
+          filter.frequency.exponentialRampToValueAtTime(endFreq, time + duration);
+          filter.Q.setValueAtTime(2.8, time);
+
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(volume, time);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          noise.start(time);
+        } catch (e) {}
+      }
+
+      playScanLaser() {
+        if (!this.enabled) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        const now = this.ctx.currentTime;
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.35);
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
+      playLockBleep() {
+        if (!this.enabled) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        const now = this.ctx.currentTime;
+        osc.frequency.setValueAtTime(1400, now);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+      playCompleteChime() {
+        if (!this.enabled) return;
+        this.init();
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, index) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          const now = this.ctx.currentTime + index * 0.08;
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.06, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.5);
+        });
+      }
+    }
+    const soundSynth = new CyberAudioSynth();
+
+    // ==========================================
+    // 3. 真實球場與統一骨架模擬引擎 (Realistic Arena & Unified Skeleton Engine)
+    // 小人繪圖直接建立在解剖關節骨架上，確保 AI 骨架與小人 100% 絕對重合
+    // ==========================================
+    class RealArenaVolleyballEngine {
+      constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.running = true;
+        this.viewMode = 'isometric';
+        this.currentMatchIndex = 0;
+        this.currentRallyIndex = 0;
+        this.rallyTime = 0;
+        this.totalMatchElapsed = 0;
+        this.lastTimestamp = performance.now();
+
+        // 12 位球員正式排球輪轉與場上站位 (FIVB 官方標準：嚴格 3 前排 + 3 後排)
+        this.basePlayers = [
+          // ── 藍隊 (主隊) ──
+          // 前排 (Front Row: 只能在網前進攻與攔網): OH 4號位, MB 3號位, S 2號位
+          { id: 1, team: 'blue', num: 1, role: 'OH', isFrontRow: true,  wx: -2.8, wy: -2.4, name: '林晨皓', curWx: -2.8, curWy: -2.4 },
+          { id: 4, team: 'blue', num: 4, role: 'MB', isFrontRow: true,  wx: -1.8, wy: 0.0,  name: '吳俊諺', curWx: -1.8, curWy: 0.0 },
+          { id: 3, team: 'blue', num: 3, role: 'S',  isFrontRow: true,  wx: -2.0, wy: 2.2,  name: '許家豪', curWx: -2.0, curWy: 2.2 },
+          // 後排 (Back Row: 依排球規則絕對不可參與前排攔網): OH 5號位, L 6號位, OP 1號位
+          { id: 6, team: 'blue', num: 6, role: 'OH', isFrontRow: false, wx: -6.2, wy: -2.4, name: '黃昱翔', curWx: -6.2, curWy: -2.4 },
+          { id: 5, team: 'blue', num: 5, role: 'L',  isFrontRow: false, wx: -6.8, wy: 0.0,  name: '蘇育民', curWx: -6.8, curWy: 0.0 },
+          { id: 2, team: 'blue', num: 2, role: 'OP', isFrontRow: false, wx: -6.5, wy: 2.4,  name: '陳冠廷', curWx: -6.5, curWy: 2.4 },
+          
+          // ── 紅隊 (客隊) ──
+          // 前排 (Front Row: 只能在網前進攻與攔網): OP 2號位, MB 3號位, OH 4號位
+          { id: 8, team: 'red', num: 8, role: 'OP', isFrontRow: true,  wx: 2.0, wy: -2.2, name: '李承祐', curWx: 2.0, curWy: -2.2 },
+          { id: 10, team: 'red', num: 10, role: 'MB', isFrontRow: true,  wx: 1.8, wy: 0.0,  name: '鄭志強', curWx: 1.8, curWy: 0.0 },
+          { id: 7, team: 'red', num: 7, role: 'OH', isFrontRow: true,  wx: 2.8, wy: 2.4,  name: '高橋 健', curWx: 2.8, curWy: 2.4 },
+          // 後排 (Back Row: 依排球規則絕對不可參與前排攔網): S 1號位, L 6號位, MB 5號位
+          { id: 9, team: 'red', num: 9, role: 'S',  isFrontRow: false, wx: 6.5, wy: -2.2, name: '張宏偉', curWx: 6.5, curWy: -2.2 },
+          { id: 11, team: 'red', num: 11, role: 'L',  isFrontRow: false, wx: 6.8, wy: 0.0,  name: '劉子玄', curWx: 6.8, curWy: 0.0 },
+          { id: 12, team: 'red', num: 12, role: 'MB', isFrontRow: false, wx: 6.2, wy: 2.2,  name: '趙子豪', curWx: 6.2, curWy: 2.2 }
+        ];
+
+        this.currentBall = { x: 0, y: 0, z: 0 };
+        this.calculatedPlayers = []; // 保存當前幀每個球員解算好的關節節點，供 AI 骨架圖層精準繪製
+
+        this.orbitYaw = 0;
+        this.orbitPitch = 0;
+        this.isDragging = false;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
+
+        this.lastReportedRally = -1;
+        this.playedEventIndices = new Set();
+        this.nextShoeSqueakTime = 1.4;
+
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.initMouseControls();
+        this.loop = this.loop.bind(this);
+        requestAnimationFrame(this.loop);
+      }
+
+      initMouseControls() {
+        const vp = document.getElementById('viewportContainer') || this.canvas;
+        vp.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          this.isDragging = true;
+          this.dragStartX = e.clientX;
+          this.dragStartY = e.clientY;
+          vp.style.cursor = 'grabbing';
+          e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!this.isDragging) return;
+          const dx = e.clientX - this.dragStartX;
+          const dy = e.clientY - this.dragStartY;
+          this.dragStartX = e.clientX;
+          this.dragStartY = e.clientY;
+          this.orbitYaw += dx * 0.008;
+          this.orbitPitch = Math.max(-60, Math.min(60, this.orbitPitch + dy * 0.5));
+
+          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+            const badge = document.getElementById('hudAngleBadge');
+            if (badge && !badge.innerText.includes('自訂 3D 自由旋轉')) {
+              badge.innerHTML = '<span>🔄 視角: 自訂 3D 自由旋轉 (拖曳中)</span>';
+              document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+            }
+          }
+        });
+
+        window.addEventListener('mouseup', () => {
+          if (this.isDragging) {
+            this.isDragging = false;
+            vp.style.cursor = 'grab';
+          }
+        });
+
+        vp.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 1) {
+            this.isDragging = true;
+            this.dragStartX = e.touches[0].clientX;
+            this.dragStartY = e.touches[0].clientY;
+          }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+          if (!this.isDragging || e.touches.length !== 1) return;
+          const dx = e.touches[0].clientX - this.dragStartX;
+          const dy = e.touches[0].clientY - this.dragStartY;
+          this.dragStartX = e.touches[0].clientX;
+          this.dragStartY = e.touches[0].clientY;
+          this.orbitYaw += dx * 0.008;
+          this.orbitPitch = Math.max(-60, Math.min(60, this.orbitPitch + dy * 0.5));
+
+          const badge = document.getElementById('hudAngleBadge');
+          if (badge && !badge.innerText.includes('自訂 3D 自由旋轉')) {
+            badge.innerHTML = '<span>🔄 視角: 自訂 3D 自由旋轉 (觸控拖曳)</span>';
+            document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+          }
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+          this.isDragging = false;
+        });
+      }
+
+      resize() {
+        this.canvas.width = this.canvas.parentElement.clientWidth || 800;
+        this.canvas.height = this.canvas.parentElement.clientHeight || 500;
+      }
+
+      loadMatch(index) {
+        this.currentMatchIndex = index;
+        this.currentRallyIndex = 0;
+        this.rallyTime = 0;
+        this.totalMatchElapsed = 0;
+        this.lastReportedRally = -1;
+        if (this.playedEventIndices) this.playedEventIndices.clear();
+        this.nextShoeSqueakTime = 1.4;
+      }
+
+      getCurrentMatch() {
+        return MATCHES_DATABASE[this.currentMatchIndex] || MATCHES_DATABASE[0];
+      }
+
+      setViewMode(mode) {
+        this.viewMode = mode;
+        this.orbitYaw = 0;
+        this.orbitPitch = 0;
+      }
+
+      project(wx, wy, wz = 0) {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const cx = w * 0.5;
+        const cy = h * 0.5;
+
+        // 支援滑鼠與觸控拖曳旋轉 3D 球場視角
+        let rwx = wx;
+        let rwy = wy;
+        if (this.orbitYaw !== 0) {
+          const cos = Math.cos(this.orbitYaw);
+          const sin = Math.sin(this.orbitYaw);
+          rwx = wx * cos - wy * sin;
+          rwy = wx * sin + wy * cos;
+        }
+
+        if (this.viewMode === 'tactical') {
+          const scale = Math.min(w / 22, h / 12) * 0.88;
+          return { x: cx + rwx * scale, y: cy + rwy * scale + this.orbitPitch, scale: 1, depth: 0 };
+        } else if (this.viewMode === 'baseline') {
+          const camX = -13.5;
+          const dist = (rwx - camX);
+          const fov = 380 / (dist + 3);
+          return {
+            x: cx + rwy * fov * 1.45,
+            y: cy + 110 - (dist * 14) - (wz * fov * 1.5) + this.orbitPitch,
+            scale: Math.max(0.4, fov * 0.024),
+            depth: dist
+          };
+        } else if (this.viewMode === 'net') {
+          const fov = 40;
+          return {
+            x: cx + (rwy * fov * 1.3) + (rwx * 15),
+            y: cy + 90 - (wz * fov * 1.4) + (rwx * 18) + this.orbitPitch,
+            scale: 1.25,
+            depth: rwx
+          };
+        } else {
+          // 轉播 45°
+          const isoX = (rwx - rwy) * 0.866;
+          const isoY = (rwx + rwy) * 0.5;
+          const scale = Math.min(w / 24, h / 14) * 0.95;
+          return {
+            x: cx + isoX * scale * 1.3,
+            y: cy + 20 + isoY * scale * 0.75 - (wz * scale * 1.4) + this.orbitPitch,
+            scale: 0.95,
+            depth: isoY
+          };
+        }
+      }
+
+      loop(now) {
+        if (!this.running) return;
+        const deltaSec = Math.min((now - this.lastTimestamp) / 1000, 0.05);
+        this.lastTimestamp = now;
+
+        const match = this.getCurrentMatch();
+        const currentRally = match.rallies[this.currentRallyIndex] || match.rallies[0];
+
+        this.rallyTime += deltaSec;
+        this.totalMatchElapsed += deltaSec;
+
+        if (this.rallyTime > currentRally.duration) {
+          this.rallyTime = 0;
+          this.currentRallyIndex = (this.currentRallyIndex + 1) % match.rallies.length;
+          if (this.playedEventIndices) this.playedEventIndices.clear();
+          this.nextShoeSqueakTime = 1.4;
+        }
+
+        if (this.currentRallyIndex !== this.lastReportedRally) {
+          this.lastReportedRally = this.currentRallyIndex;
+          if (this.playedEventIndices) this.playedEventIndices.clear();
+          this.nextShoeSqueakTime = 1.4;
+          const scoreboard = document.getElementById('scoreboardText');
+          if (scoreboard) scoreboard.textContent = `${currentRally.scoreBlue} : ${currentRally.scoreRed}`;
+          if (window.updatePlayByPlayActive) window.updatePlayByPlayActive(this.currentRallyIndex);
+          const tickerText = document.getElementById('hudTickerText');
+          if (tickerText) {
+            tickerText.innerHTML = `<span>🏐 [第 ${this.currentRallyIndex + 1}/${match.rallies.length} 回合] ${currentRally.desc}</span>`;
+          }
+        }
+
+        // 5. 比賽擬真實況音效解算 (接球 / 扣球重擊 / 起跳攻擊破風 / 排球鞋磨木地板吱吱聲)
+        if (currentRally.events) {
+          currentRally.events.forEach((ev, idx) => {
+            // 起跳攻擊 (比扣球擊球提早 0.35 秒發出騰空呼嘯與蹬地摩擦聲)
+            if (ev.isSpike && !this.playedEventIndices.has('jump_' + idx)) {
+              if (this.rallyTime >= Math.max(0, ev.t - 0.35)) {
+                this.playedEventIndices.add('jump_' + idx);
+                soundSynth.playJumpTakeoff();
+                soundSynth.playShoeSqueak();
+              }
+            }
+            // 觸球擊球瞬間 (扣球 vs 一般墊接球/托球)
+            if (!this.playedEventIndices.has('contact_' + idx)) {
+              if (this.rallyTime >= ev.t) {
+                this.playedEventIndices.add('contact_' + idx);
+                if (ev.isSpike) {
+                  soundSynth.playSpikeHit();
+                } else if (ev.contactId) {
+                  soundSynth.playReceiveBall();
+                  if (Math.random() < 0.6) soundSynth.playShoeSqueak();
+                } else if (ev.hitFloor) {
+                  soundSynth.playLockBleep();
+                }
+              }
+            }
+          });
+        }
+
+        // 場上球員急停煞車、跑動變向時的木地板球鞋摩擦聲 (Sneaker squeaks)
+        if (this.rallyTime >= this.nextShoeSqueakTime) {
+          soundSynth.playShoeSqueak();
+          this.nextShoeSqueakTime = this.rallyTime + 1.8 + Math.random() * 2.2;
+        }
+
+        this.render(match, currentRally, deltaSec);
+        requestAnimationFrame(this.loop);
+      }
+
+      render(match, rally, deltaSec = 0.016) {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const ctx = this.ctx;
+
+        // 1. 繪製真實室內體育館實木地板 (Warm Maple Hardwood Arena)
+        this.drawRealisticArenaCourt(ctx, w, h);
+
+        // 2. 計算球體物理軌跡
+        const ball = this.computePhysicsBall(rally, this.rallyTime);
+        this.currentBall = ball;
+
+        const matchClock = document.getElementById('hudMatchClock');
+        if (matchClock) {
+          const totalSec = Math.floor(this.totalMatchElapsed) % 300;
+          const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
+          const ss = String(totalSec % 60).padStart(2, '0');
+          matchClock.textContent = `MATCH TIME: ${mm}:${ss} / 05:00`;
+        }
+
+        // 3. FIVB 國際排球規則解析 (嚴格執行 3前排 + 3後排，後排與自由人絕對不攔網，至多雙人攔網)
+        const spikeEv = rally.events.find(e => e.isSpike);
+        const spikeNear = spikeEv && Math.abs(this.rallyTime - spikeEv.t) < 0.9;
+        const spikeHappening = spikeEv && Math.abs(this.rallyTime - spikeEv.t) < 0.42;
+
+        // 判定哪隊進攻、哪隊防守 (依扣球者或球的場地位置)
+        const attackerTeam = spikeEv ? (spikeEv.ball.x < 0 ? 'blue' : 'red') : (ball.x < 0 ? 'blue' : 'red');
+        const defendingTeam = attackerTeam === 'blue' ? 'red' : 'blue';
+
+        // 決定防守方「唯一且合法」的攔網陣容：嚴格限制為前排快攻手(MB) + 扣球側前排邊線球員，恰好 2 人組成標準雙人攔網 (Double Block)
+        let blockingPlayerIds = [];
+        if (spikeNear) {
+          const attackY = spikeEv.ball ? spikeEv.ball.y : ball.y;
+          if (defendingTeam === 'blue') {
+            // 藍隊防守：前排 MB 是 #4 吳俊諺，根據對手進攻側挑選前排主攻 #1 (y < 0) 或前排舉球 #3 (y >= 0)
+            const wingBlockerId = attackY < 0 ? 1 : 3;
+            blockingPlayerIds = [4, wingBlockerId];
+          } else {
+            // 紅隊防守：前排 MB 是 #10 鄭志強，根據對手進攻側挑選前排接應 #8 (y < 0) 或前排主攻 #7 (y >= 0)
+            const wingBlockerId = attackY < 0 ? 8 : 7;
+            blockingPlayerIds = [10, wingBlockerId];
+          }
+        }
+
+        // 4. 計算 12 位球員符合人體工學的平滑位移 (Ergonomic Continuous Locomotion - 無瞬移)
+        this.calculatedPlayers = this.basePlayers.map(p => {
+          let extraZ = 0;
+          let isSpiking = false, isBlocking = false, isDigging = false;
+          let targetX = p.wx, targetY = p.wy;
+
+          // 微動態呼吸與重心切換 (微幅墊步，隨時間平滑變動)
+          const idleBounce = Math.sin(this.rallyTime * 4.0 + p.id * 1.5) * 0.06;
+          const idleShuffle = Math.cos(this.rallyTime * 3.0 + p.id * 1.8) * 0.08;
+
+          // 尋找即將或當前發生的球員觸球事件 (提前 1.5 秒預判開始助跑或移動，絕不突兀瞬移)
+          const upcomingEv = rally.events.find(e => e.contactId === p.id && this.rallyTime <= e.t && (e.t - this.rallyTime) < 1.6);
+          const currentEv = rally.events.find(e => Math.abs(this.rallyTime - e.t) < 0.5 && e.contactId === p.id);
+
+          if (upcomingEv || currentEv) {
+            const ev = currentEv || upcomingEv;
+            // 觸球者目標平滑跑向擊球點
+            targetX = ev.ball.x;
+            targetY = ev.ball.y;
+
+            if (ev.isSpike) {
+              // 扣球起跳：在擊球瞬間平滑騰空
+              if (Math.abs(this.rallyTime - ev.t) < 0.45) {
+                isSpiking = true;
+                const jumpProgress = Math.sin(Math.min(1, Math.max(0, (this.rallyTime - (ev.t - 0.4)) / 0.8)) * Math.PI);
+                extraZ = jumpProgress * 0.95;
+              }
+            } else if (p.role === 'L' || ev.ball.z < 1.1) {
+              if (Math.abs(this.rallyTime - ev.t) < 0.6) {
+                isDigging = true;
+              }
+            }
+          } else if (p.team === defendingTeam) {
+            // 防守方全員戰術執行 (Strict FIVB Tactics)
+            if (spikeNear) {
+              if (blockingPlayerIds.includes(p.id)) {
+                // 僅合法的 2 名「前排攔網球員」移至網前起跳形成密合雙人攔網 (Double Block)
+                targetX = p.team === 'blue' ? -0.85 : 0.85;
+                const attackY = spikeEv.ball ? spikeEv.ball.y : ball.y;
+                // 快攻手中路封堵，翼側攔網手緊貼快攻手，形成 50cm 緊密雙人手牆
+                targetY = p.role === 'MB' ? attackY * 0.75 : (attackY * 0.75 + (p.wy < 0 ? -0.55 : 0.55));
+                if (spikeHappening) {
+                  isBlocking = true;
+                  const jumpProgress = Math.sin(Math.min(1, Math.max(0, (this.rallyTime - (spikeEv.t - 0.35)) / 0.7)) * Math.PI);
+                  extraZ = jumpProgress * 0.88;
+                }
+              } else if (p.isFrontRow) {
+                // 第三位前排球員 (未參與攔網者)：退至三米線內保護吊球 (Tip Coverage)
+                targetX = p.team === 'blue' ? -2.6 : 2.6;
+                targetY = p.wy * 0.6;
+              } else {
+                // 後排 3 人 (自由人與後排防守)：絕對不攔網，深蹲站位防守大斜線與直線
+                if (p.role === 'L') {
+                  targetX = p.team === 'blue' ? -6.8 : 6.8;
+                  targetY = -(spikeEv.ball ? spikeEv.ball.y : ball.y) * 0.5;
+                  if (spikeHappening && ball.z < 1.4) isDigging = true;
+                } else {
+                  targetX = p.team === 'blue' ? -6.6 : 6.6;
+                  targetY = p.wy * 0.85;
+                }
+              }
+            } else {
+              // 一般防守站位
+              if (p.isFrontRow) {
+                targetX = p.team === 'blue' ? -1.3 : 1.3;
+                targetY = p.wy * 0.6 + ball.y * 0.35;
+              } else if (p.role === 'L') {
+                targetX = p.team === 'blue' ? -6.8 : 6.8;
+                targetY = -ball.y * 0.4;
+              }
+            }
+          } else {
+            // 進攻方站位：舉球員準備到位、攻擊手後撤拉開助跑空間
+            if (p.role === 'S') {
+              targetX = p.team === 'blue' ? -2.0 : 2.0;
+              targetY = 1.0;
+            } else if (p.role === 'OH' || p.role === 'OP') {
+              targetX = p.team === 'blue' ? -4.2 : 4.2;
+            } else if (p.role === 'MB') {
+              targetX = p.team === 'blue' ? -1.8 : 1.8;
+              targetY = 0.2;
+            }
+          }
+
+          // 人體工學物理步進：有最大衝刺速度上限 (4.2 m/s)，平滑逼近目標，徹底消除瞬移
+          if (p.curWx === undefined) p.curWx = p.wx;
+          if (p.curWy === undefined) p.curWy = p.wy;
+
+          const toTargetX = (targetX + idleShuffle) - p.curWx;
+          const toTargetY = (targetY + idleBounce) - p.curWy;
+          const distToTarget = Math.hypot(toTargetX, toTargetY);
+
+          const maxSprintSpeed = 4.2; // 運動員在球場短衝之最大速度 (m/s)
+          const maxStep = maxSprintSpeed * deltaSec;
+
+          if (distToTarget > 0.001) {
+            const step = Math.min(maxStep, distToTarget * 6.0 * deltaSec);
+            p.curWx += (toTargetX / distToTarget) * step;
+            p.curWy += (toTargetY / distToTarget) * step;
+          }
+
+          const isMoving = distToTarget > 0.08;
+          const movePhase = this.rallyTime * 12 + p.id * 2.2;
+
+          const projRoot = this.project(p.curWx, p.curWy, extraZ);
+          const scale = projRoot.scale || 1;
+          const rx = projRoot.x;
+          const ry = projRoot.y;
+
+          // 關節骨架建構：支援人體工學奔跑剪刀步與真實排球動作
+          const joints = this.buildPlayerJoints(rx, ry, scale, isSpiking, isBlocking, isDigging, isMoving, movePhase);
+
+          return {
+            ...p,
+            projRoot,
+            extraZ,
+            scale,
+            joints,
+            isSpiking,
+            isBlocking,
+            isDigging,
+            isMoving
+          };
+        }).sort((a, b) => b.projRoot.depth - a.projRoot.depth);
+
+        // 繪製真實小人
+        this.calculatedPlayers.forEach(p => this.drawAthleticPlayer(ctx, p));
+
+        // 4. 畫真實排球網
+        this.drawRealisticNet(ctx);
+
+        // 5. 畫排球與真實地面影子
+        const ballGround = this.project(ball.x, ball.y, 0);
+        const ballAir = this.project(ball.x, ball.y, ball.z);
+
+        ctx.fillStyle = `rgba(0, 0, 0, ${Math.max(0.12, 0.45 - ball.z * 0.08)})`;
+        ctx.beginPath();
+        const shadowR = Math.max(4, 12 * ballGround.scale * (1 + ball.z * 0.08));
+        ctx.ellipse(ballGround.x, ballGround.y, shadowR, shadowR * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        this.drawRealisticBall(ctx, ballAir.x, ballAir.y, ballAir.scale);
+      }
+
+      computePhysicsBall(rally, time) {
+        const events = rally.events;
+        let prev = events[0];
+        let next = events[events.length - 1];
+
+        for (let i = 0; i < events.length - 1; i++) {
+          if (time >= events[i].t && time <= events[i + 1].t) {
+            prev = events[i];
+            next = events[i + 1];
+            break;
+          }
+        }
+
+        const dt = next.t - prev.t;
+        const progress = dt > 0 ? (time - prev.t) / dt : 1;
+
+        const bx = prev.ball.x + (next.ball.x - prev.ball.x) * progress;
+        const by = prev.ball.y + (next.ball.y - prev.ball.y) * progress;
+
+        let arcZ = 0;
+        if (!next.hitFloor) {
+          arcZ = Math.sin(progress * Math.PI) * (dt * 1.25);
+        } else {
+          arcZ = Math.sin((1 - progress) * Math.PI * 0.5) * 0.4;
+        }
+
+        const bz = Math.max(0, prev.ball.z + (next.ball.z - prev.ball.z) * progress + arcZ);
+        return { x: bx, y: by, z: bz };
+      }
+
+      // 建立解剖關節節點 (17 處人體關節點，供小人與 AI 骨架共同使用)
+      buildPlayerJoints(rx, ry, s, isSpiking, isBlocking, isDigging, isMoving = false, movePhase = 0) {
+        let headY = ry - 42 * s;
+        let neckY = ry - 32 * s;
+        let hipY = ry - 14 * s;
+
+        let lArm, rArm, lLeg, rLeg;
+
+        if (isSpiking) {
+          // 起跳揮臂暴扣姿態
+          lArm = { elbow: { x: rx - 18 * s, y: neckY - 8 * s }, wrist: { x: rx - 24 * s, y: neckY + 4 * s } };
+          rArm = { elbow: { x: rx + 20 * s, y: neckY - 26 * s }, wrist: { x: rx + 26 * s, y: neckY - 48 * s } }; // 摸高打點高舉
+          lLeg = { knee: { x: rx - 10 * s, y: hipY + 12 * s }, ankle: { x: rx - 12 * s, y: hipY + 28 * s } };
+          rLeg = { knee: { x: rx + 14 * s, y: hipY + 8 * s }, ankle: { x: rx + 18 * s, y: hipY + 24 * s } };
+        } else if (isBlocking) {
+          // 雙手高舉攔網姿態
+          lArm = { elbow: { x: rx - 12 * s, y: neckY - 18 * s }, wrist: { x: rx - 14 * s, y: neckY - 42 * s } };
+          rArm = { elbow: { x: rx + 12 * s, y: neckY - 18 * s }, wrist: { x: rx + 14 * s, y: neckY - 42 * s } };
+          lLeg = { knee: { x: rx - 8 * s, y: hipY + 16 * s }, ankle: { x: rx - 8 * s, y: hipY + 36 * s } };
+          rLeg = { knee: { x: rx + 8 * s, y: hipY + 16 * s }, ankle: { x: rx + 8 * s, y: hipY + 36 * s } };
+        } else if (isDigging) {
+          // 低重心墊球防守姿態
+          headY = ry - 28 * s;
+          neckY = ry - 22 * s;
+          hipY = ry - 8 * s;
+          lArm = { elbow: { x: rx - 8 * s, y: neckY + 12 * s }, wrist: { x: rx - 4 * s, y: neckY + 24 * s } };
+          rArm = { elbow: { x: rx + 8 * s, y: neckY + 12 * s }, wrist: { x: rx + 4 * s, y: neckY + 24 * s } };
+          lLeg = { knee: { x: rx - 18 * s, y: hipY + 14 * s }, ankle: { x: rx - 22 * s, y: hipY + 28 * s } };
+          rLeg = { knee: { x: rx + 18 * s, y: hipY + 14 * s }, ankle: { x: rx + 22 * s, y: hipY + 28 * s } };
+        } else if (isMoving) {
+          // 奔跑移位步態 (Running Stride Kinematics)
+          const swing = Math.sin(movePhase) * 6 * s;
+          lLeg = { knee: { x: rx - 8 * s + swing * 0.7, y: hipY + 14 * s }, ankle: { x: rx - 8 * s + swing, y: hipY + 30 * s } };
+          rLeg = { knee: { x: rx + 8 * s - swing * 0.7, y: hipY + 14 * s }, ankle: { x: rx + 8 * s - swing, y: hipY + 30 * s } };
+          lArm = { elbow: { x: rx - 12 * s - swing * 0.8, y: neckY + 10 * s }, wrist: { x: rx - 14 * s - swing * 1.2, y: neckY + 22 * s } };
+          rArm = { elbow: { x: rx + 12 * s + swing * 0.8, y: neckY + 10 * s }, wrist: { x: rx + 14 * s + swing * 1.2, y: neckY + 22 * s } };
+        } else {
+          // 標準站位預備姿態
+          lArm = { elbow: { x: rx - 14 * s, y: neckY + 8 * s }, wrist: { x: rx - 16 * s, y: neckY + 20 * s } };
+          rArm = { elbow: { x: rx + 14 * s, y: neckY + 8 * s }, wrist: { x: rx + 16 * s, y: neckY + 20 * s } };
+          lLeg = { knee: { x: rx - 8 * s, y: hipY + 15 * s }, ankle: { x: rx - 8 * s, y: hipY + 32 * s } };
+          rLeg = { knee: { x: rx + 8 * s, y: hipY + 15 * s }, ankle: { x: rx + 8 * s, y: hipY + 32 * s } };
+        }
+
+        return {
+          head: { x: rx, y: headY },
+          neck: { x: rx, y: neckY },
+          leftShoulder: { x: rx - 12 * s, y: neckY + 2 * s },
+          rightShoulder: { x: rx + 12 * s, y: neckY + 2 * s },
+          leftElbow: lArm.elbow,
+          rightElbow: rArm.elbow,
+          leftWrist: lArm.wrist,
+          rightWrist: rArm.wrist,
+          leftHip: { x: rx - 8 * s, y: hipY },
+          rightHip: { x: rx + 8 * s, y: hipY },
+          leftKnee: lLeg.knee,
+          rightKnee: rLeg.knee,
+          leftAnkle: lLeg.ankle,
+          rightAnkle: rLeg.ankle
+        };
+      }
+
+      // 繪製真實排球場地 (楓木木紋地坪 + FIVB 官方皇家藍/橘紅賽事場地)
+      drawRealisticArenaCourt(ctx, w, h) {
+        ctx.save();
+
+        // 1. 周圍實木硬木體育館地坪 (Warm Maple Parquet Arena)
+        ctx.fillStyle = '#caa373';
+        ctx.fillRect(0, 0, w, h);
+
+        // 木紋地板細條紋 (Wood Floor Planks)
+        ctx.strokeStyle = 'rgba(168, 128, 86, 0.35)';
+        ctx.lineWidth = 1;
+        for (let y = 0; y < h; y += 18) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+
+        // 2. 緩衝區 (Free Zone - FIVB 經典橘紅/赤陶土色)
+        const f1 = this.project(-12, -7);
+        const f2 = this.project(12, -7);
+        const f3 = this.project(12, 7);
+        const f4 = this.project(-12, 7);
+
+        ctx.fillStyle = '#ea580c';
+        ctx.beginPath();
+        ctx.moveTo(f1.x, f1.y); ctx.lineTo(f2.x, f2.y);
+        ctx.lineTo(f3.x, f3.y); ctx.lineTo(f4.x, f4.y);
+        ctx.closePath();
+        ctx.fill();
+
+        // 3. 正式比賽區 18m × 9m (FIVB 經典皇家亮藍色)
+        const p1 = this.project(-9, -4.5);
+        const p2 = this.project(9, -4.5);
+        const p3 = this.project(9, 4.5);
+        const p4 = this.project(-9, 4.5);
+
+        ctx.fillStyle = '#1d4ed8';
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+        ctx.closePath();
+        ctx.fill();
+
+        // 官方 5cm 純白邊線 (清晰立體)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // 中線 (Net Center Line)
+        const c1 = this.project(0, -4.5);
+        const c2 = this.project(0, 4.5);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y);
+        ctx.stroke();
+
+        // 3m 攻擊線 (含場外延長虛線)
+        const a1 = this.project(-3, -4.5);
+        const a2 = this.project(-3, 4.5);
+        const a3 = this.project(3, -4.5);
+        const a4 = this.project(3, 4.5);
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y);
+        ctx.moveTo(a3.x, a3.y); ctx.lineTo(a4.x, a4.y);
+        ctx.stroke();
+
+        // 3m 攻擊線兩側延長虛線
+        const a1Ex = this.project(-3, -6.0);
+        const a2Ex = this.project(-3, 6.0);
+        const a3Ex = this.project(3, -6.0);
+        const a4Ex = this.project(3, 6.0);
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        ctx.moveTo(a1.x, a1.y); ctx.lineTo(a1Ex.x, a1Ex.y);
+        ctx.moveTo(a2.x, a2.y); ctx.lineTo(a2Ex.x, a2Ex.y);
+        ctx.moveTo(a3.x, a3.y); ctx.lineTo(a3Ex.x, a3Ex.y);
+        ctx.moveTo(a4.x, a4.y); ctx.lineTo(a4Ex.x, a4Ex.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 發球區端線短標記 (Service Zone Ticks)
+        const sL1 = this.project(-9, -4.5);
+        const sL1Ex = this.project(-9.4, -4.5);
+        const sR1 = this.project(-9, 4.5);
+        const sR1Ex = this.project(-9.4, 4.5);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sL1.x, sL1.y); ctx.lineTo(sL1Ex.x, sL1Ex.y);
+        ctx.moveTo(sR1.x, sR1.y); ctx.lineTo(sR1Ex.x, sR1Ex.y);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // 繪製真實專業球網系統
+      drawRealisticNet(ctx) {
+        ctx.save();
+        const bottomL = this.project(0, -4.8, 0);
+        const bottomR = this.project(0, 4.8, 0);
+        const topL = this.project(0, -4.8, 2.43); // 2.43m
+        const topR = this.project(0, 4.8, 2.43);
+
+        // 裁判椅 (Referee Stand - 左側藍柱外)
+        const refStandTop = this.project(0, -5.4, 2.5);
+        const refStandBot = this.project(0, -5.4, 0);
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(refStandBot.x, refStandBot.y);
+        ctx.lineTo(refStandTop.x, refStandTop.y);
+        ctx.stroke();
+
+        // 鋼製亮黃色網柱 (Padded Steel Posts)
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(bottomL.x, bottomL.y); ctx.lineTo(topL.x, topL.y);
+        ctx.moveTo(bottomR.x, bottomR.y); ctx.lineTo(topR.x, topR.y);
+        ctx.stroke();
+
+        // 白色加厚頂帶 (Top White Band)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(topL.x, topL.y);
+        ctx.lineTo(topR.x, topR.y);
+        ctx.stroke();
+
+        // 白色底帶 (Bottom Band)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(bottomL.x, bottomL.y);
+        ctx.lineTo(bottomR.x, bottomR.y);
+        ctx.stroke();
+
+        // 黑色深色網眼 (Black Mesh)
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.45)';
+        ctx.lineWidth = 0.8;
+        for (let i = 1; i <= 6; i++) {
+          const t = i / 7;
+          ctx.beginPath();
+          ctx.moveTo(topL.x + (bottomL.x - topL.x) * t, topL.y + (bottomL.y - topL.y) * t);
+          ctx.lineTo(topR.x + (bottomR.x - topR.x) * t, topR.y + (bottomR.y - topR.y) * t);
+          ctx.stroke();
+        }
+
+        // 紅白相間標桿 (Official Red/White Striped Antenna)
+        const ant1Bot = this.project(0, -4.5, 2.43);
+        const ant1Top = this.project(0, -4.5, 3.23); // 高出網面 80cm
+        const ant2Bot = this.project(0, 4.5, 2.43);
+        const ant2Top = this.project(0, 4.5, 3.23);
+
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(ant1Bot.x, ant1Bot.y); ctx.lineTo(ant1Top.x, ant1Top.y);
+        ctx.moveTo(ant2Bot.x, ant2Bot.y); ctx.lineTo(ant2Top.x, ant2Top.y);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // 繪製與骨架關節節點 100% 精準對齊的真實運動員小人
+      drawAthleticPlayer(ctx, p) {
+        const j = p.joints;
+        const s = p.scale;
+        const isBlue = p.team === 'blue';
+        const jerseyColor = isBlue ? '#0284c7' : '#ef4444';
+        const shortsColor = isBlue ? '#0369a1' : '#b91c1c';
+
+        ctx.save();
+
+        // 1. 雙腿與球鞋 (從腳踝連線至膝蓋、髖部)
+        ctx.strokeStyle = '#fed7aa'; // 膚色
+        ctx.lineWidth = 4 * s;
+        ctx.lineCap = 'round';
+
+        // 左右大腿與小腿
+        ctx.beginPath();
+        ctx.moveTo(j.leftHip.x, j.leftHip.y);
+        ctx.lineTo(j.leftKnee.x, j.leftKnee.y);
+        ctx.lineTo(j.leftAnkle.x, j.leftAnkle.y);
+        ctx.moveTo(j.rightHip.x, j.rightHip.y);
+        ctx.lineTo(j.rightKnee.x, j.rightKnee.y);
+        ctx.lineTo(j.rightAnkle.x, j.rightAnkle.y);
+        ctx.stroke();
+
+        // 排球白色護膝 (Kneepads)
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(j.leftKnee.x, j.leftKnee.y, 3.5 * s, 0, Math.PI * 2);
+        ctx.arc(j.rightKnee.x, j.rightKnee.y, 3.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 排球運動鞋 (Asics/Mizuno Court Shoes)
+        ctx.fillStyle = isBlue ? '#38bdf8' : '#fb923c';
+        ctx.beginPath();
+        ctx.ellipse(j.leftAnkle.x - 2 * s, j.leftAnkle.y + 2 * s, 5 * s, 2.8 * s, 0, 0, Math.PI * 2);
+        ctx.ellipse(j.rightAnkle.x + 2 * s, j.rightAnkle.y + 2 * s, 5 * s, 2.8 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. 運動球褲 (Volleyball Shorts)
+        ctx.fillStyle = shortsColor;
+        ctx.beginPath();
+        ctx.moveTo(j.leftHip.x - 4 * s, j.leftHip.y - 4 * s);
+        ctx.lineTo(j.rightHip.x + 4 * s, j.rightHip.y - 4 * s);
+        ctx.lineTo(j.rightKnee.x + 3 * s, j.leftHip.y + 8 * s);
+        ctx.lineTo(j.leftKnee.x - 3 * s, j.leftHip.y + 8 * s);
+        ctx.closePath();
+        ctx.fill();
+
+        // 3. 雙手臂 (從肩膀至手肘、手腕)
+        ctx.strokeStyle = '#fed7aa';
+        ctx.lineWidth = 3.5 * s;
+        ctx.beginPath();
+        ctx.moveTo(j.leftShoulder.x, j.leftShoulder.y);
+        ctx.lineTo(j.leftElbow.x, j.leftElbow.y);
+        ctx.lineTo(j.leftWrist.x, j.leftWrist.y);
+        ctx.moveTo(j.rightShoulder.x, j.rightShoulder.y);
+        ctx.lineTo(j.rightElbow.x, j.rightElbow.y);
+        ctx.lineTo(j.rightWrist.x, j.rightWrist.y);
+        ctx.stroke();
+
+        // 4. 運動球衣軀幹 (Jersey Torso)
+        ctx.fillStyle = jerseyColor;
+        ctx.beginPath();
+        ctx.moveTo(j.leftShoulder.x - 3 * s, j.leftShoulder.y);
+        ctx.lineTo(j.rightShoulder.x + 3 * s, j.rightShoulder.y);
+        ctx.lineTo(j.rightHip.x + 3 * s, j.rightHip.y);
+        ctx.lineTo(j.leftHip.x - 3 * s, j.leftHip.y);
+        ctx.closePath();
+        ctx.fill();
+
+        // 球衣號碼 (清晰立體)
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `800 ${Math.max(9, 10 * s)}px Plus Jakarta Sans`;
+        ctx.textAlign = 'center';
+        ctx.fillText(p.num, j.neck.x, j.neck.y + 12 * s);
+
+        // 5. 頭部與髮型 (Head & Hair)
+        ctx.fillStyle = '#fed7aa'; // 膚色
+        ctx.beginPath();
+        ctx.arc(j.head.x, j.head.y, 6.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 頭髮
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(j.head.x, j.head.y - 2 * s, 6.5 * s, Math.PI, 0);
+        ctx.fill();
+
+        // 位置標籤 (如 OH#1)
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `700 ${Math.max(8, 9 * s)}px Plus Jakarta Sans`;
+        ctx.fillText(`${p.role}#${p.num}`, j.head.x, j.head.y - 12 * s);
+
+        ctx.restore();
+      }
+
+      drawRealisticBall(ctx, x, y, scale = 1) {
+        ctx.save();
+        // Mikasa V200W 藍黃雙色螺旋排球
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(x, y, 8 * scale, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#1d4ed8';
+        ctx.lineWidth = 2.2 * scale;
+        ctx.beginPath();
+        ctx.arc(x, y, 5 * scale, 0.4, 2.8);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, 7 * scale, 3.5, 5.8);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1 * scale;
+        ctx.beginPath();
+        ctx.arc(x, y, 8 * scale, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // ==========================================
+    // 4. AI 視覺圖層 (骨架姿態直接提取小人的真實 joints，達到 100% 精準對齊)
+    // ==========================================
+    class AiVisualOverlay {
+      constructor(canvasId, overlayContainerId, engine) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.container = document.getElementById(overlayContainerId);
+        this.engine = engine;
+        this.stage = 'idle';
+        this.showYolo = true;
+        this.showPose = true;
+        this.showTrack = true;
+        this.activeMvpId = 1;
+
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.animate = this.animate.bind(this);
+        requestAnimationFrame(this.animate);
+      }
+
+      resize() {
+        this.canvas.width = this.canvas.parentElement.clientWidth || 800;
+        this.canvas.height = this.canvas.parentElement.clientHeight || 500;
+      }
+
+      createYolo12Boxes() {
+        this.clear();
+        this.stage = 'yolo';
+        this.container.style.display = 'block';
+        this.engine.calculatedPlayers.forEach((p, i) => {
+          setTimeout(() => {
+            soundSynth.playLockBleep();
+          }, i * 40);
+        });
+      }
+
+      createPoseSkeletons(match) {
+        this.stage = 'pose';
+        this.activeMvpId = match.mvpPlayerId || 1;
+      }
+
+      animate() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 1. YOLO 追蹤框：每幀動態跟隨小人位置與縮放更新，永不脫節
+        if (this.showYolo && (this.stage === 'yolo' || this.stage === 'pose' || this.stage === 'done')) {
+          this.container.style.display = 'block';
+          this.engine.calculatedPlayers.forEach(p => {
+            let div = document.getElementById(`yolo-box-${p.id}`);
+            if (!div) {
+              div = document.createElement('div');
+              div.id = `yolo-box-${p.id}`;
+              div.className = `bounding-box ${p.team === 'red' ? 'enemy-box' : ''} active`;
+              div.innerHTML = `<span class="box-label ${p.team === 'red' ? 'enemy' : ''}">#${p.num} ${p.name}</span>`;
+              this.container.appendChild(div);
+            }
+
+            const bw = 52 * p.scale;
+            const bh = 82 * p.scale;
+            const left = Math.round(p.projRoot.x - bw / 2);
+            const top = Math.round(p.projRoot.y - bh * 0.86);
+
+            div.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+            div.style.width = `${bw}px`;
+            div.style.height = `${bh}px`;
+
+            // 同時在 HUD 畫布上繪製科技瞄準角標與即時戰術動作
+            this.ctx.save();
+            this.ctx.strokeStyle = p.team === 'red' ? 'rgba(239, 68, 68, 0.75)' : 'rgba(56, 189, 248, 0.75)';
+            this.ctx.lineWidth = 1.6;
+            const cornerLen = 7 * p.scale;
+
+            // 繪製四角科技邊緣 reticle
+            this.ctx.beginPath();
+            // 左上
+            this.ctx.moveTo(left, top + cornerLen);
+            this.ctx.lineTo(left, top);
+            this.ctx.lineTo(left + cornerLen, top);
+            // 右上
+            this.ctx.moveTo(left + bw - cornerLen, top);
+            this.ctx.lineTo(left + bw, top);
+            this.ctx.lineTo(left + bw, top + cornerLen);
+            // 左下
+            this.ctx.moveTo(left, top + bh - cornerLen);
+            this.ctx.lineTo(left, top + bh);
+            this.ctx.lineTo(left + cornerLen, top + bh);
+            // 右下
+            this.ctx.moveTo(left + bw - cornerLen, top + bh);
+            this.ctx.lineTo(left + bw, top + bh);
+            this.ctx.lineTo(left + bw, top + bh - cornerLen);
+            this.ctx.stroke();
+
+            // 若球員正在起跳或特殊動作，標註即時動態標籤
+            if (p.isSpiking || p.isBlocking || p.isDigging) {
+              this.ctx.fillStyle = p.isSpiking ? '#f59e0b' : (p.isBlocking ? '#10b981' : '#38bdf8');
+              this.ctx.font = '700 10px Plus Jakarta Sans';
+              const actionTag = p.isSpiking ? '⚡ SPIKE' : (p.isBlocking ? '🛡️ BLOCK' : '🏐 DIG');
+              this.ctx.fillText(actionTag, left + bw + 4, top + 14);
+            }
+            this.ctx.restore();
+          });
+        } else {
+          this.container.style.display = 'none';
+        }
+
+        // 2. 姿態骨架：直接從引擎正在繪製的小人中取得解剖 joints 進行連線，保證 100% 絕對重合！
+        if (this.showPose && (this.stage === 'pose' || this.stage === 'done')) {
+          const targetPlayer = this.engine.calculatedPlayers.find(p => p.id === this.activeMvpId) || this.engine.calculatedPlayers[0];
+          if (targetPlayer && targetPlayer.joints) {
+            const j = targetPlayer.joints;
+            this.ctx.save();
+            
+            // 骨架連線 (Cyan Glow Bones)
+            this.ctx.strokeStyle = '#00f0ff';
+            this.ctx.lineWidth = 3.5;
+            this.ctx.shadowColor = '#00f0ff';
+            this.ctx.shadowBlur = 8;
+
+            const bones = [
+              ['neck', 'leftShoulder'], ['neck', 'rightShoulder'],
+              ['leftShoulder', 'leftElbow'], ['leftElbow', 'leftWrist'],
+              ['rightShoulder', 'rightElbow'], ['rightElbow', 'rightWrist'],
+              ['neck', 'leftHip'], ['neck', 'rightHip'],
+              ['leftHip', 'leftKnee'], ['leftKnee', 'leftAnkle'],
+              ['rightHip', 'rightKnee'], ['rightKnee', 'rightAnkle']
+            ];
+
+            bones.forEach(([from, to]) => {
+              if (j[from] && j[to]) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(j[from].x, j[from].y);
+                this.ctx.lineTo(j[to].x, j[to].y);
+                this.ctx.stroke();
+              }
+            });
+
+            // 關節節點 (COCO Keypoint Dots)
+            Object.values(j).forEach(pt => {
+              this.ctx.fillStyle = '#ffffff';
+              this.ctx.beginPath();
+              this.ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+              this.ctx.fill();
+              this.ctx.strokeStyle = '#0284c7';
+              this.ctx.lineWidth = 2;
+              this.ctx.stroke();
+            });
+
+            // 垂直打點高度標尺線
+            if (j.rightWrist) {
+              this.ctx.strokeStyle = '#38bdf8';
+              this.ctx.setLineDash([4, 4]);
+              this.ctx.beginPath();
+              this.ctx.moveTo(j.rightWrist.x, j.rightWrist.y);
+              this.ctx.lineTo(j.rightWrist.x, this.canvas.height * 0.86);
+              this.ctx.stroke();
+
+              this.ctx.font = '700 12px Plus Jakarta Sans';
+              this.ctx.fillStyle = '#ffffff';
+              const pData = PLAYERS_DATABASE[targetPlayer.id];
+              const reachVal = pData ? pData.spikeReach : 3.32;
+              this.ctx.fillText(`擊球打點: ${reachVal}m`, j.rightWrist.x + 8, j.rightWrist.y - 8);
+            }
+            this.ctx.restore();
+          }
+        }
+
+        requestAnimationFrame(this.animate);
+      }
+
+      setLayerVisibility(type, visible) {
+        if (type === 'yolo') {
+          this.showYolo = visible;
+          this.container.style.display = visible ? 'block' : 'none';
+        } else if (type === 'pose') {
+          this.showPose = visible;
+        } else if (type === 'track') {
+          this.showTrack = visible;
+        }
+      }
+
+      clear() {
+        this.container.innerHTML = '';
+        this.stage = 'idle';
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      }
+    }
+
+    // ==========================================
+    // 5. Chart.js 雷達圖
+    // ==========================================
+    class RadarChartManager {
+      constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.chart = null;
+        this.init();
+      }
+
+      init() {
+        const ctx = this.canvas.getContext('2d');
+        this.chart = new Chart(ctx, {
+          type: 'radar',
+          data: {
+            labels: ['攻擊得分', '攔網成功', '發球破壞', '防守到位', '失誤控制'],
+            datasets: [{
+              label: '能力指標 (%)',
+              data: [50, 50, 50, 50, 50],
+              backgroundColor: 'rgba(2, 132, 199, 0.2)',
+              borderColor: '#0284c7',
+              borderWidth: 2.5,
+              pointBackgroundColor: '#0284c7',
+              pointBorderColor: '#ffffff',
+              pointRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              r: {
+                angleLines: { color: '#e2e8f0' },
+                grid: { color: '#e2e8f0' },
+                pointLabels: { color: '#475569', font: { family: 'Outfit', size: 11, weight: '600' } },
+                ticks: { display: false, min: 0, max: 100 }
+              }
+            },
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+
+      update(radarData, team = 'blue') {
+        if (!this.chart) return;
+        const color = team === 'blue' ? '#0284c7' : '#ef4444';
+        const bgColor = team === 'blue' ? 'rgba(2, 132, 199, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+        this.chart.data.datasets[0].data = radarData;
+        this.chart.data.datasets[0].borderColor = color;
+        this.chart.data.datasets[0].backgroundColor = bgColor;
+        this.chart.data.datasets[0].pointBackgroundColor = color;
+        this.chart.update({ duration: 500, easing: 'easeOutQuart' });
+      }
+    }
+
+    // ==========================================
+    // 6. 前端控制核心
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      const matchEngine = new RealArenaVolleyballEngine('defaultSimCanvas');
+      const aiOverlay = new AiVisualOverlay('aiHudCanvas', 'yoloOverlay', matchEngine);
+      const radarChart = new RadarChartManager('playerRadarChart');
+
+      const matchBadgeTag = document.getElementById('matchBadgeTag');
+      const matchTitleText = document.getElementById('matchTitleText');
+      const btnRestartMatch = document.getElementById('btnRestartMatch');
+      const btnLaunchAI = document.getElementById('btnLaunchAI');
+      const btnText = document.getElementById('btnText');
+      const btnIcon = document.getElementById('btnIcon');
+      const laserScanline = document.getElementById('laserScanline');
+      const terminalBox = document.getElementById('terminalBox');
+      const computationBadge = document.getElementById('computationBadge');
+      const systemStatusText = document.getElementById('systemStatusText');
+      const playerDropdown = document.getElementById('playerDropdown');
+
+      const playerJerseyBadge = document.getElementById('playerJerseyBadge');
+      const playerNameText = document.getElementById('playerNameText');
+      const playerPosText = document.getElementById('playerPosText');
+      const playerSubInfo = document.getElementById('playerSubInfo');
+
+      const valSpikeReach = document.getElementById('valSpikeReach');
+      const valHangTime = document.getElementById('valHangTime');
+      const valSpikeSpeed = document.getElementById('valSpikeSpeed');
+      const subSpikeReach = document.getElementById('subSpikeReach');
+      const subHangTime = document.getElementById('subHangTime');
+      const subSpikeSpeed = document.getElementById('subSpikeSpeed');
+      const reachScaleText = document.getElementById('reachScaleText');
+      const reachBarFill = document.getElementById('reachBarFill');
+      const shotLineVal = document.getElementById('shotLineVal');
+      const shotCrossVal = document.getElementById('shotCrossVal');
+      const shotTipVal = document.getElementById('shotTipVal');
+      const diagnosisText = document.getElementById('diagnosisText');
+      const hudFpsText = document.getElementById('hudFpsText');
+      const hudAngleBadge = document.getElementById('hudAngleBadge');
+
+      function addLog(tag, text, type = 'normal') {
+        const time = new Date().toTimeString().split(' ')[0];
+        const line = document.createElement('div');
+        line.className = 'terminal-line';
+        let tagClass = 'log-tag';
+        if (type === 'warn') tagClass += ' warn';
+        if (type === 'success') tagClass += ' success';
+        line.innerHTML = `
+          <span class="log-time">[${time}]</span>
+          <span class="${tagClass}">${tag}</span>
+          <span class="log-text">${text}</span>
+        `;
+        terminalBox.appendChild(line);
+        terminalBox.scrollTop = terminalBox.scrollHeight;
+      }
+
+      if (btnRestartMatch) {
+        btnRestartMatch.addEventListener('click', () => {
+          matchEngine.loadMatch(0);
+          if (window.updatePlayByPlayActive) window.updatePlayByPlayActive(0);
+          addLog('[開局重置]', '比賽已重置從 0:0 開始！', 'success');
+          soundSynth.playLockBleep();
+        });
+      }
+
+      // 視角切換
+      const camButtons = [
+        { id: 'camIso', mode: 'isometric', label: '🎥 視角: 轉播斜角 (45°)' },
+        { id: 'camBaseline', mode: 'baseline', label: '🎥 視角: 底線球員視角 (Baseline)' },
+        { id: 'camTactical', mode: 'tactical', label: '🎥 視角: 戰術俯視 (90° Top-Down)' },
+        { id: 'camNet', mode: 'net', label: '🎥 視角: 網前攻防視角 (Net Close-up)' }
+      ];
+
+      camButtons.forEach(btnConfig => {
+        const btn = document.getElementById(btnConfig.id);
+        btn.addEventListener('click', () => {
+          camButtons.forEach(b => document.getElementById(b.id).classList.remove('active'));
+          btn.classList.add('active');
+          matchEngine.setViewMode(btnConfig.mode);
+          hudAngleBadge.innerHTML = `<span>${btnConfig.label}</span>`;
+          soundSynth.playLockBleep();
+        });
+      });
+
+      // 來源分頁
+      const tabDemo = document.getElementById('tabDemo');
+      const tabFile = document.getElementById('tabFile');
+      const tabYoutube = document.getElementById('tabYoutube');
+      const fileContainer = document.getElementById('fileUploadContainer');
+      const ytContainer = document.getElementById('youtubeInputContainer');
+      const defaultCanvas = document.getElementById('defaultSimCanvas');
+      const matchVideo = document.getElementById('matchVideo');
+      const youtubeIframe = document.getElementById('youtubeIframe');
+
+      function switchSourceTab(source) {
+        [tabDemo, tabFile, tabYoutube].forEach(t => t.classList.remove('active'));
+        fileContainer.style.display = 'none';
+        ytContainer.style.display = 'none';
+
+        if (source === 'demo') {
+          tabDemo.classList.add('active');
+          defaultCanvas.style.display = 'block';
+          matchVideo.style.display = 'none';
+          youtubeIframe.style.display = 'none';
+          matchEngine.running = true;
+          addLog('[來源]', '已切換為真實排球場實戰模擬');
+        } else if (source === 'file') {
+          tabFile.classList.add('active');
+          fileContainer.style.display = 'flex';
+          defaultCanvas.style.display = 'none';
+          matchVideo.style.display = 'block';
+          matchEngine.running = false;
+        } else if (source === 'youtube') {
+          tabYoutube.classList.add('active');
+          ytContainer.style.display = 'flex';
+          defaultCanvas.style.display = 'none';
+          youtubeIframe.style.display = 'block';
+          matchEngine.running = false;
+        }
+      }
+      tabDemo.addEventListener('click', () => switchSourceTab('demo'));
+      tabFile.addEventListener('click', () => switchSourceTab('file'));
+      tabYoutube.addEventListener('click', () => switchSourceTab('youtube'));
+
+      // ── 本地影片檔案上傳與拖曳 (Drag & Drop) 支援 ──
+      const videoFileInput = document.getElementById('videoFileInput');
+
+      function handleVideoFile(file) {
+        if (!file) return;
+        if (!file.type.startsWith('video/') && !file.name.match(/\.(mp4|webm|mov|mkv|avi)$/i)) {
+          addLog('[檔案格式]', '請拖曳或選擇支援的排球比賽影片格式 (MP4 / WebM)！', 'warn');
+          return;
+        }
+        try {
+          const fileUrl = URL.createObjectURL(file);
+          matchVideo.src = fileUrl;
+          switchSourceTab('file');
+          matchVideo.currentTime = 0;
+          matchVideo.play().catch(() => {});
+          addLog('[本地影片載入]', `成功載入影片: ${file.name} (${(file.size / (1024 * 1024)).toFixed(1)} MB)，已同步就緒`, 'success');
+          soundSynth.playLockBleep();
+        } catch (err) {
+          addLog('[載入異常]', '影片格式解碼失敗，請確認檔案完整性', 'warn');
+        }
+      }
+
+      if (fileContainer) {
+        fileContainer.addEventListener('click', () => {
+          if (videoFileInput) videoFileInput.click();
+        });
+
+        fileContainer.addEventListener('dragenter', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          fileContainer.classList.add('dragover');
+        });
+
+        fileContainer.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = 'copy';
+          fileContainer.classList.add('dragover');
+        });
+
+        fileContainer.addEventListener('dragleave', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          fileContainer.classList.remove('dragover');
+        });
+
+        fileContainer.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          fileContainer.classList.remove('dragover');
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleVideoFile(e.dataTransfer.files[0]);
+          }
+        });
+      }
+
+      if (videoFileInput) {
+        videoFileInput.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            handleVideoFile(e.target.files[0]);
+          }
+        });
+      }
+
+      // 支援直接將比賽影片拖曳至 3D 視窗畫布中
+      const vpContainer = document.getElementById('viewportContainer');
+      if (vpContainer) {
+        vpContainer.addEventListener('dragover', (e) => {
+          // 僅當拖曳檔案時處理
+          if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+          }
+        });
+        vpContainer.addEventListener('drop', (e) => {
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleVideoFile(e.dataTransfer.files[0]);
+          }
+        });
+      }
+
+      // 防止瀏覽器在視窗外部空白處放開時預設跳出開啟檔案
+      window.addEventListener('dragover', (e) => {
+        if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+          e.preventDefault();
+        }
+      }, false);
+      window.addEventListener('drop', (e) => {
+        if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+          e.preventDefault();
+        }
+      }, false);
+
+      // ── YouTube 影片網址分析載入 ──
+      const youtubeUrlInput = document.getElementById('youtubeUrlInput');
+      const btnLoadYoutube = document.getElementById('btnLoadYoutube');
+      const btnYoutubeSample = document.getElementById('btnYoutubeSample');
+
+      function loadYoutubeUrl(url) {
+        if (!url) {
+          addLog('[YouTube]', '請輸入有效的 YouTube 影片網址！', 'warn');
+          return;
+        }
+        let videoId = '';
+        if (url.includes('v=')) {
+          videoId = url.split('v=')[1].split('&')[0];
+        } else if (url.includes('youtu.be/')) {
+          videoId = url.split('youtu.be/')[1].split('?')[0];
+        } else if (url.includes('embed/')) {
+          videoId = url.split('embed/')[1].split('?')[0];
+        } else if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) {
+          videoId = url.trim();
+        }
+
+        if (videoId) {
+          switchSourceTab('youtube');
+          youtubeIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&enablejsapi=1`;
+          addLog('[YouTube連線]', `已成功串流解析 YouTube 賽事 (ID: ${videoId})，隨時可進行 AI 運算`, 'success');
+          soundSynth.playLockBleep();
+        } else {
+          addLog('[YouTube錯誤]', '無法辨識該 YouTube 網址，請確認網址格式！', 'warn');
+        }
+      }
+
+      if (btnLoadYoutube) {
+        btnLoadYoutube.addEventListener('click', () => {
+          loadYoutubeUrl(youtubeUrlInput.value.trim());
+        });
+      }
+
+      if (youtubeUrlInput) {
+        youtubeUrlInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            loadYoutubeUrl(youtubeUrlInput.value.trim());
+          }
+        });
+      }
+
+      if (btnYoutubeSample) {
+        btnYoutubeSample.addEventListener('click', () => {
+          const sample = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+          youtubeUrlInput.value = sample;
+          loadYoutubeUrl(sample);
+        });
+      }
+
+      // 音效切換 (接球/扣球重擊/起跳破風/球鞋磨木地板)
+      const soundToggle = document.getElementById('soundToggle');
+      soundToggle.addEventListener('click', () => {
+        soundSynth.enabled = !soundSynth.enabled;
+        soundToggle.classList.toggle('active', soundSynth.enabled);
+        soundToggle.innerHTML = soundSynth.enabled ? '<span>🔊 比賽音效: 開啟</span>' : '<span>🔇 比賽音效: 靜音</span>';
+        if (soundSynth.enabled) {
+          soundSynth.playShoeSqueak();
+          addLog('[實況音效]', '排球實況音效已開啟 (包含：墊接球「蹦！」、超手重扣「ㄅㄧㄤˋ！」、起跳破風、球鞋磨地板聲)', 'success');
+        } else {
+          addLog('[實況音效]', '比賽音效已靜音');
+        }
+      });
+
+      // 圖層控制
+      document.getElementById('layerYolo').addEventListener('change', (e) => aiOverlay.setLayerVisibility('yolo', e.target.checked));
+      document.getElementById('layerPose').addEventListener('change', (e) => aiOverlay.setLayerVisibility('pose', e.target.checked));
+      document.getElementById('layerTrack').addEventListener('change', (e) => aiOverlay.setLayerVisibility('track', e.target.checked));
+
+      // 啟動 AI 運算
+      let isComputing = false;
+      btnLaunchAI.addEventListener('click', async () => {
+        if (isComputing) return;
+        isComputing = true;
+        btnLaunchAI.disabled = true;
+        btnIcon.textContent = '⏳';
+        btnText.textContent = '全場數據解算中...';
+        computationBadge.textContent = '運算中...';
+        computationBadge.style.background = '#fef3c7';
+        computationBadge.style.color = '#b45309';
+        systemStatusText.textContent = 'AI 推論運算中';
+
+        laserScanline.classList.add('scanning');
+        soundSynth.playScanLaser();
+        aiOverlay.clear();
+
+        const match = matchEngine.getCurrentMatch();
+        addLog('[AI 推論]', `開始分析【${match.badge}】全場攻防數據...`, 'warn');
+
+        setTimeout(() => {
+          addLog('[物件追蹤]', '定位 12 位球員軌跡與球體落點');
+          aiOverlay.createYolo12Boxes();
+        }, 800);
+
+        setTimeout(() => {
+          addLog('[骨架姿態]', `解算 MVP #${match.mvpPlayerId} 關鍵得分之空中姿態...`, 'warn');
+          aiOverlay.createPoseSkeletons(match);
+          soundSynth.playScanLaser();
+        }, 1600);
+
+        setTimeout(() => {
+          addLog('[統計分析]', `計算終場比分 ${match.finalScore}、打點、滯空與戰術評語...`);
+          hudFpsText.textContent = '60.0 FPS';
+        }, 2200);
+
+        setTimeout(() => {
+          laserScanline.classList.remove('scanning');
+          isComputing = false;
+          btnLaunchAI.disabled = false;
+          btnIcon.textContent = '🔄';
+          btnText.textContent = '重新執行本場 AI 運算';
+          computationBadge.textContent = `運算完成 (${match.finalScore})`;
+          computationBadge.style.background = '#d1fae5';
+          computationBadge.style.color = '#065f46';
+          systemStatusText.textContent = '戰情數據已就緒';
+
+          soundSynth.playCompleteChime();
+          addLog('[完成]', `【${match.title}】解析完畢！獲勝方：${match.winner === 'blue' ? '藍隊' : '紅隊'} (${match.finalScore})`, 'success');
+
+          updateDashboardPlayer(parseInt(playerDropdown.value) || 1);
+        }, 2600);
+      });
+
+      function updateDashboardPlayer(playerId) {
+        const player = PLAYERS_DATABASE[playerId] || PLAYERS_DATABASE[1];
+        if (!player) return;
+
+        playerJerseyBadge.textContent = `#${player.number}`;
+        playerJerseyBadge.classList.toggle('red-team', player.team === 'red');
+        playerNameText.innerHTML = `${player.name} <span style="font-size: 0.8rem; font-weight: 600; color: ${player.team === 'blue' ? 'var(--brand-blue)' : '#dc2626'};">${player.pos}</span>`;
+        playerSubInfo.textContent = `${player.id === 1 ? '🏆 賽事 MVP • ' : ''}身高: ${player.height} • 體重: ${player.weight} • ${player.team === 'blue' ? '國立體大 (藍隊)' : '中原大學 (紅隊)'}`;
+
+        // 雷達圖即時更新對應球員數值
+        radarChart.update(player.radar, player.team);
+
+        // 運動科學生理指標平滑補間
+        animateValue(valSpikeReach, parseFloat(valSpikeReach.textContent) || 2.8, player.spikeReach, 2);
+        animateValue(valHangTime, parseFloat(valHangTime.textContent) || 0.4, player.hangTime, 2);
+        animateValue(valSpikeSpeed, parseFloat(valSpikeSpeed.textContent) || 60, player.spikeSpeed, 0);
+
+        const overNetCm = Math.round((player.spikeReach - 2.43) * 100);
+        subSpikeReach.textContent = `離網高度: ${overNetCm > 0 ? '+' + overNetCm : overNetCm} cm (摸高 ${(player.spikeReach * 100).toFixed(0)}cm)`;
+        subHangTime.textContent = `垂直起跳摸高: ${player.jumpHeight} cm`;
+        subSpikeSpeed.textContent = `揮臂角速度: ${player.armVelocity} rad/s`;
+
+        // 打點尺標與進攻落點分佈
+        reachScaleText.textContent = `打點: ${player.spikeReach}m (${overNetCm > 0 ? '+' + overNetCm : overNetCm}cm)`;
+        const fillPercent = Math.min(100, Math.max(12, ((player.spikeReach - 2.0) / 1.6) * 100));
+        reachBarFill.style.width = `${fillPercent}%`;
+        reachBarFill.style.background = player.team === 'blue' 
+          ? 'linear-gradient(90deg, #38bdf8, #0284c7)' 
+          : 'linear-gradient(90deg, #f87171, #dc2626)';
+
+        shotLineVal.textContent = `${player.shotLine}%`;
+        shotCrossVal.textContent = `${player.shotCross}%`;
+        shotTipVal.textContent = `${player.shotTip}%`;
+
+        // 四大專項技術指標卡
+        const spkRate = document.getElementById('skillSpikeRate');
+        const spkVal = document.getElementById('skillSpikeVal');
+        const spkErr = document.getElementById('skillSpikeErr');
+        if (spkRate) spkRate.textContent = player.skills.spikeRate;
+        if (spkVal) spkVal.textContent = player.skills.spikeVal;
+        if (spkErr) spkErr.textContent = player.skills.spikeErr;
+
+        const blkSub = document.getElementById('skillBlockSub');
+        const blkVal = document.getElementById('skillBlockVal');
+        const blkTouches = document.getElementById('skillBlockTouches');
+        if (blkSub) blkSub.textContent = player.skills.blockSub;
+        if (blkVal) blkVal.textContent = player.skills.blockVal;
+        if (blkTouches) blkTouches.textContent = player.skills.blockTouches;
+
+        const srvRate = document.getElementById('skillServeRate');
+        const srvVal = document.getElementById('skillServeVal');
+        const srvErr = document.getElementById('skillServeErr');
+        if (srvRate) srvRate.textContent = player.skills.serveRate;
+        if (srvVal) srvVal.textContent = player.skills.serveVal;
+        if (srvErr) srvErr.textContent = player.skills.serveErr;
+
+        const recRate = document.getElementById('skillRecRate');
+        const digVal = document.getElementById('skillDigVal');
+        const digEx = document.getElementById('skillDigEx');
+        if (recRate) recRate.textContent = player.skills.recRate;
+        if (digVal) digVal.textContent = player.skills.digVal;
+        if (digEx) digEx.textContent = player.skills.digEx;
+
+        // 戰術教練評語
+        diagnosisText.innerHTML = `<strong>【2026 金牌決賽技術評核 - #${player.number} ${player.name} (${player.pos})】</strong> ${player.diagnosis}`;
+
+        // 高亮技術統計總表選定列
+        document.querySelectorAll('#boxScoreTableBody tr').forEach(r => r.classList.remove('active-row'));
+        const row = document.getElementById(`boxscore-row-${player.id}`);
+        if (row) {
+          row.classList.add('active-row');
+        }
+
+        // 連動 3D 骨架瞄準該球員
+        aiOverlay.activeMvpId = player.id;
+      }
+
+      function renderBoxScoreTable() {
+        const tbody = document.getElementById('boxScoreTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        Object.values(PLAYERS_DATABASE).forEach(p => {
+          const tr = document.createElement('tr');
+          tr.id = `boxscore-row-${p.id}`;
+          if (p.team === 'red') tr.classList.add('team-red-row');
+          tr.style.cursor = 'pointer';
+          tr.title = `點擊切換查看 #${p.number} ${p.name} 完整運動科學數據`;
+
+          tr.innerHTML = `
+            <td><span style="font-size: 0.74rem; font-weight: 700; color: ${p.team === 'blue' ? '#0284c7' : '#dc2626'};">${p.team === 'blue' ? '🔵 國立體大' : '🔴 中原大學'}</span></td>
+            <td><span class="box-player-tag ${p.team === 'red' ? 'tag-red' : 'tag-blue'}">#${p.number}</span></td>
+            <td><strong>${p.name}</strong></td>
+            <td>${p.pos}</td>
+            <td style="font-weight: 800; color: ${p.team === 'blue' ? '#0284c7' : '#dc2626'};">${p.tableStats.points}</td>
+            <td>${p.tableStats.spikes}</td>
+            <td>${p.tableStats.spikePct}</td>
+            <td>${p.tableStats.blocks}</td>
+            <td>${p.tableStats.aces}</td>
+            <td>${p.tableStats.digs}</td>
+            <td>${p.tableStats.recPct}</td>
+            <td style="color: ${p.tableStats.errors > 1 ? '#dc2626' : 'inherit'}; font-weight: ${p.tableStats.errors > 1 ? '700' : 'normal'};">${p.tableStats.errors}</td>
+          `;
+
+          tr.addEventListener('click', () => {
+            playerDropdown.value = p.id;
+            updateDashboardPlayer(p.id);
+            addLog('[球員焦點]', `已從技術統計總表切換至 #${p.number} ${p.name}`);
+            soundSynth.playLockBleep();
+          });
+
+          tbody.appendChild(tr);
+        });
+      }
+
+      function renderPlayByPlay() {
+        const container = document.getElementById('playByPlayList');
+        if (!container) return;
+        container.innerHTML = '';
+
+        CHAMPIONSHIP_MATCH.rallies.forEach((r, idx) => {
+          const div = document.createElement('div');
+          div.className = `playbyplay-item ${r.scorer.team === 'blue' ? 'blue-pt' : 'red-pt'} ${idx === 0 ? 'active' : ''}`;
+          div.id = `pbp-item-${idx}`;
+          div.innerHTML = `
+            <div class="playbyplay-score">${r.scoreBlue} : ${r.scoreRed}</div>
+            <div class="playbyplay-desc">
+              <span style="font-weight: 700; color: ${r.scorer.team === 'blue' ? '#0284c7' : '#dc2626'};">[第 ${idx + 1} 回合]</span>
+              ${r.desc}
+            </div>
+            <span class="playbyplay-badge ${r.error ? 'error' : (r.scorer.type.includes('攔') ? 'block' : (r.scorer.type.includes('Ace') ? 'ace' : 'spike'))}">
+              ${r.scorer.name} (${r.scorer.type})
+            </span>
+          `;
+          container.appendChild(div);
+        });
+      }
+
+      window.updatePlayByPlayActive = function(rallyIndex) {
+        document.querySelectorAll('.playbyplay-item').forEach((item, idx) => {
+          item.classList.toggle('active', idx === rallyIndex);
+        });
+        const container = document.getElementById('playByPlayList');
+        const activeItem = document.getElementById(`pbp-item-${rallyIndex}`);
+        if (container && activeItem) {
+          // 僅滾動賽事實錄內部滾動條，嚴禁干擾整頁捲軸
+          const topOffset = activeItem.offsetTop - container.offsetTop;
+          container.scrollTo({ top: topOffset, behavior: 'smooth' });
+        }
+      };
+
+      function animateValue(element, start, end, decimals = 0) {
+        if (!element) return;
+        const duration = 400;
+        const startTime = performance.now();
+        function update(currentTime) {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const current = start + (end - start) * progress;
+          element.textContent = current.toFixed(decimals);
+          if (progress < 1) requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+      }
+
+      playerDropdown.addEventListener('change', (e) => {
+        const playerId = parseInt(e.target.value);
+        updateDashboardPlayer(playerId);
+        const player = PLAYERS_DATABASE[playerId];
+        addLog('[球員焦點]', `鎖定 #${player.number} ${player.name} (${player.pos}) 攻守數據與骨架`);
+        soundSynth.playLockBleep();
+      });
+
+      // 初始化載入
+      renderBoxScoreTable();
+      renderPlayByPlay();
+      matchEngine.loadMatch(0);
+      updateDashboardPlayer(1);
+      addLog('[系統就緒]', '2026 金牌決賽完整數據已就緒，從 0:0 開始連續實錄。', 'success');
+    });
+  </script>
+</body>
+</html>
